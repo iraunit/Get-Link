@@ -17,7 +17,8 @@ import (
 func InitializeApp() *App {
 	sugaredLogger := util.InitLogger()
 	middlewareImpl := router.NewMiddlewareImpl(sugaredLogger)
-	linksImpl := restHandler.NewLinksImpl(sugaredLogger)
+	client := util.NewRedis()
+	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client)
 	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl)
 	app := NewApp(sugaredLogger, muxRouter)
 	return app
