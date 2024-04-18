@@ -15,6 +15,7 @@ func InitializeApp() *App {
 		NewApp,
 		util.InitLogger,
 		router.NewMuxRouter,
+		util.NewRedis,
 		router.NewMiddlewareImpl, wire.Bind(new(router.Middleware), new(*router.MiddlewareImpl)),
 		restHandler.NewLinksImpl, wire.Bind(new(restHandler.Links), new(*restHandler.LinksImpl)),
 	)
