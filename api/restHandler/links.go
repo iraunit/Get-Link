@@ -71,8 +71,9 @@ func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
 	//	}
 	//}
 
-	impl.ReadMessages(conn, userEmail)
-	impl.WriteMessages(conn, userEmail)
+	go impl.ReadMessages(conn, userEmail)
+	go impl.WriteMessages(conn, userEmail)
+
 }
 
 func (impl *LinksImpl) HandleConnection(conn *websocket.Conn, userEmail string) {
@@ -132,13 +133,13 @@ func (impl *LinksImpl) HandleDisconnection(conn *websocket.Conn, userEmail strin
 
 func (impl *LinksImpl) ReadMessages(conn *websocket.Conn, userEmail string) {
 	//Read message from Client and push to Redis
-	defer conn.Close()
 
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			impl.logger.Errorw("Error in reading message from Web Sockets", "Error: ", err)
-			continue
+			impl.HandleDisconnection(conn, userEmail)
+			break
 		}
 		ctx := context.Background()
 		err = impl.client.Publish(ctx, fmt.Sprintf("%s_mobile", userEmail), string(message)).Err()
@@ -154,19 +155,24 @@ func (impl *LinksImpl) WriteMessages(conn *websocket.Conn, userEmail string) {
 	ctx := context.Background()
 	pubSub := impl.client.Subscribe(ctx, fmt.Sprintf("%s_web", userEmail))
 
-	defer pubSub.Close()
-	defer conn.Close()
-
 	for {
 		msg, err := pubSub.ReceiveMessage(ctx)
 		if err != nil {
 			impl.logger.Errorw("Error in receiving message from pubSub", "Error: ", err)
+			_ = conn.WriteMessage(websocket.TextMessage, []byte("Error in receiving message from Database. Try again."))
 			continue
 		}
 		err = conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
 		if err != nil {
 			impl.logger.Errorw("Error in writing message to Web Sockets", "Error: ", err)
-			continue
+			impl.HandleDisconnection(conn, userEmail)
+			_ = pubSub.Close()
+			break
+		}
+
+		err = impl.client.Del(ctx, msg.Channel).Err()
+		if err != nil {
+			impl.logger.Errorw("Error deleting message from Redis", "Error: ", err)
 		}
 	}
 
