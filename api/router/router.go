@@ -21,8 +21,8 @@ func NewMuxRouter(middleware Middleware, links restHandler.Links) *MuxRouter {
 
 func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.Use(r.middleware.CorsMiddleware)
-	r.Router.Use(r.middleware.LoggerMiddleware)
 	r.Router.Use(r.middleware.AuthMiddleware)
+	r.Router.Use(r.middleware.LoggerMiddleware)
 
 	r.Router.HandleFunc("/get-all-links", r.Links.GetAllLinks).Methods("GET")
 

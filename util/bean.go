@@ -11,7 +11,8 @@ type MainCfg struct {
 }
 
 type MiddlewareCfg struct {
-	JwtKey string `env:"JWT_KEY" envDefault:"secret"`
+	JwtKey   string `env:"JWT_KEY" envDefault:"secret"`
+	CorsHost string `env:"CORS_HOST" envDefault:"*"`
 }
 
 type RedisCfg struct {
@@ -19,6 +20,13 @@ type RedisCfg struct {
 	Password string `env:"REDIS_PASSWORD" envDefault:""`
 	DB       int    `env:"REDIS_DB" envDefault:"0"`
 	URL      string `env:"REDIS_URL"`
+}
+
+type PgDbCfg struct {
+	User     string `env:"DB_USER"`
+	Address  string `env:"DB_ADDRESS"`
+	Password string `env:"DB_PASSWORD"`
+	Database string `env:"DB_DATABASE"`
 }
 
 type User struct {
@@ -31,6 +39,11 @@ type Response struct {
 	Result     interface{} `json:"result,omitempty"`
 	Error      string      `json:"error,omitempty"`
 	Message    string      `json:"message,omitempty"`
+}
+
+type UserMessage struct {
+	Channel string
+	Message string
 }
 
 type Claims struct {
