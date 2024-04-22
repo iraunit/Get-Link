@@ -1,16 +1,16 @@
-package util
+package repository
 
 import (
 	"github.com/caarlos0/env"
+	"github.com/iraunit/get-link-backend/util"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"log"
 )
 
-func NewRedis() *redis.Client {
-	cfg := RedisCfg{}
+func NewRedis(logger *zap.SugaredLogger) *redis.Client {
+	cfg := util.RedisCfg{}
 	if err := env.Parse(&cfg); err != nil {
-		log.Fatal("Error loading RedisCfg from env", "Error", zap.Error(err))
+		logger.Fatal("Error loading RedisCfg from env", "Error", zap.Error(err))
 	}
 	//return redis.NewClient(&redis.Options{
 	//	Addr:     cfg.Addr,
@@ -20,7 +20,7 @@ func NewRedis() *redis.Client {
 
 	opt, err := redis.ParseURL(cfg.URL)
 	if err != nil {
-		log.Fatal("Error parsing Redis URL", "Error", zap.Error(err))
+		logger.Fatal("Error parsing Redis URL", "Error", zap.Error(err))
 	}
 
 	return redis.NewClient(opt)

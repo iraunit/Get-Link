@@ -9,6 +9,8 @@ package main
 import (
 	"github.com/iraunit/get-link-backend/api/restHandler"
 	"github.com/iraunit/get-link-backend/api/router"
+	"github.com/iraunit/get-link-backend/pkg/repository"
+	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util"
 )
 
@@ -17,8 +19,12 @@ import (
 func InitializeApp() *App {
 	sugaredLogger := util.InitLogger()
 	middlewareImpl := router.NewMiddlewareImpl(sugaredLogger)
-	client := util.NewRedis()
-	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client)
+	client := repository.NewRedis(sugaredLogger)
+	db := repository.NewPgDb(sugaredLogger)
+	v := repository.NewUsersMap()
+	impl := repository.NewRepositoryImpl(db, sugaredLogger)
+	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
+	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
 	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl)
 	app := NewApp(sugaredLogger, muxRouter)
 	return app

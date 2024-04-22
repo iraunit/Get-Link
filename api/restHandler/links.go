@@ -1,11 +1,11 @@
 package restHandler
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/go-pg/pg"
 	muxContext "github.com/gorilla/context"
 	"github.com/gorilla/websocket"
+	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -14,26 +14,29 @@ import (
 )
 
 type Links interface {
+	SocketConnection(w http.ResponseWriter, r *http.Request)
 	GetAllLinks(w http.ResponseWriter, r *http.Request)
-	HandleDisconnection(conn *websocket.Conn, userEmail string)
-	HandleConnection(conn *websocket.Conn, userEmail string)
-	ReadMessages(conn *websocket.Conn, userEmail string)
-	WriteMessages(conn *websocket.Conn, userEmail string)
+	DeleteLinks(w http.ResponseWriter, r *http.Request)
+	AddLink(w http.ResponseWriter, r *http.Request)
 }
 
 type LinksImpl struct {
-	logger *zap.SugaredLogger
-	Users  map[string]util.User
-	lock   *sync.Mutex
-	client *redis.Client
+	logger      *zap.SugaredLogger
+	Users       *map[string]util.User
+	lock        *sync.Mutex
+	client      *redis.Client
+	db          *pg.DB
+	LinkService services.LinkService
 }
 
-func NewLinksImpl(logger *zap.SugaredLogger, client *redis.Client) *LinksImpl {
+func NewLinksImpl(logger *zap.SugaredLogger, client *redis.Client, db *pg.DB, users *map[string]util.User, linkService services.LinkService) *LinksImpl {
 	return &LinksImpl{
-		logger: logger,
-		Users:  make(map[string]util.User),
-		lock:   &sync.Mutex{},
-		client: client,
+		logger:      logger,
+		Users:       users,
+		lock:        &sync.Mutex{},
+		client:      client,
+		db:          db,
+		LinkService: linkService,
 	}
 }
 
@@ -45,7 +48,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
+func (impl *LinksImpl) SocketConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
@@ -56,118 +59,92 @@ func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userEmail := muxContext.Get(r, "email").(string)
-	impl.HandleConnection(conn, userEmail)
+	impl.LinkService.HandleConnection(conn, userEmail)
 
-	//for {
-	//	messageType, p, err := conn.ReadMessage()
-	//	impl.logger.Infow("Info:", "messageType", messageType, "Message is : ", string(p), "err", err)
-	//	if err != nil {
-	//		log.Println(err)
-	//		return
-	//	}
-	//	if err := conn.WriteMessage(messageType, []byte("Message from server")); err != nil {
-	//		log.Println(err)
-	//		return
-	//	}
-	//}
+	go impl.LinkService.ReadMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
+	go impl.LinkService.WriteMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
 
-	impl.ReadMessages(conn, userEmail)
-	impl.WriteMessages(conn, userEmail)
 }
 
-func (impl *LinksImpl) HandleConnection(conn *websocket.Conn, userEmail string) {
-	impl.lock.Lock()
-	user, ok := impl.Users[userEmail]
-	if !ok {
-		user = util.User{
-			Lock:        &sync.Mutex{},
-			Connections: make([]*websocket.Conn, 0),
-		}
-		impl.Users[userEmail] = user
+func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
+
+	userEmail := muxContext.Get(r, "email").(string)
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in decoding request body"})
+		return
 	}
-	user.Lock.Lock()
-	var exists bool
-	for _, c := range user.Connections {
-		if c == conn {
-			exists = true
-			break
-		}
+	if data.Destination == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
+		return
 	}
-	if !exists {
-		user.Connections = append(user.Connections, conn)
+	if data.UUID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
+		return
 	}
-	user.Lock.Unlock()
-	impl.lock.Unlock()
+	links := impl.LinkService.GetAllLink(userEmail, data.Destination, data.UUID)
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: links})
 }
 
-func (impl *LinksImpl) HandleDisconnection(conn *websocket.Conn, userEmail string) {
-	impl.lock.Lock()
-	defer impl.lock.Unlock()
-	user, ok := impl.Users[userEmail]
+func (impl *LinksImpl) AddLink(w http.ResponseWriter, r *http.Request) {
+	userEmail := muxContext.Get(r, "email").(string)
 
-	if !ok {
-		impl.logger.Errorw("User not found in map.", "Email", userEmail)
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in decoding request body"})
 		return
 	}
 
-	user.Lock.Lock()
-	defer user.Lock.Unlock()
-
-	index := -1
-	for i, c := range user.Connections {
-		if c == conn {
-			index = i
-			break
-		}
+	if data.UUID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
+		return
 	}
 
-	if index != -1 {
-		user.Connections = append(user.Connections[:index], user.Connections[index+1:]...)
+	if data.Destination == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
+		return
 	}
 
-	if len(user.Connections) == 0 {
-		delete(impl.Users, userEmail)
+	if data.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[message] is missing."})
+		return
 	}
+
+	impl.LinkService.AddLink(userEmail, &data)
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: "Link added successfully"})
 }
 
-func (impl *LinksImpl) ReadMessages(conn *websocket.Conn, userEmail string) {
-	//Read message from Client and push to Redis
-	defer conn.Close()
-
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			impl.logger.Errorw("Error in reading message from Web Sockets", "Error: ", err)
-			continue
-		}
-		ctx := context.Background()
-		err = impl.client.Publish(ctx, fmt.Sprintf("%s_mobile", userEmail), string(message)).Err()
-		if err != nil {
-			impl.logger.Errorw("Error in publishing message to Redis", "Error: ", err)
-			continue
-		}
+func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
+	userEmail := muxContext.Get(r, "email").(string)
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 500, Error: "Error in decoding request body"})
+		return
 	}
-}
-
-func (impl *LinksImpl) WriteMessages(conn *websocket.Conn, userEmail string) {
-	// Write message to clients from Redis
-	ctx := context.Background()
-	pubSub := impl.client.Subscribe(ctx, fmt.Sprintf("%s_web", userEmail))
-
-	defer pubSub.Close()
-	defer conn.Close()
-
-	for {
-		msg, err := pubSub.ReceiveMessage(ctx)
-		if err != nil {
-			impl.logger.Errorw("Error in receiving message from pubSub", "Error: ", err)
-			continue
-		}
-		err = conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
-		if err != nil {
-			impl.logger.Errorw("Error in writing message to Web Sockets", "Error: ", err)
-			continue
-		}
+	if data.ID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[id] is missing."})
+		return
 	}
-
+	err = impl.LinkService.DeleteLink(userEmail, &data)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in deleting link"})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: "Link deleted successfully"})
 }

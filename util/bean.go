@@ -11,7 +11,8 @@ type MainCfg struct {
 }
 
 type MiddlewareCfg struct {
-	JwtKey string `env:"JWT_KEY" envDefault:"secret"`
+	JwtKey   string `env:"JWT_KEY" envDefault:"secret"`
+	CorsHost string `env:"CORS_HOST" envDefault:"*"`
 }
 
 type RedisCfg struct {
@@ -19,6 +20,13 @@ type RedisCfg struct {
 	Password string `env:"REDIS_PASSWORD" envDefault:""`
 	DB       int    `env:"REDIS_DB" envDefault:"0"`
 	URL      string `env:"REDIS_URL"`
+}
+
+type PgDbCfg struct {
+	User     string `env:"PG_DB_USER"`
+	Address  string `env:"PG_DB_ADDRESS"`
+	Password string `env:"PG_DB_PASSWORD"`
+	Database string `env:"PG_DB_DATABASE"`
 }
 
 type User struct {
@@ -33,7 +41,21 @@ type Response struct {
 	Message    string      `json:"message,omitempty"`
 }
 
+type GetLink struct {
+	ID          string `sql:"id" json:"id,omitempty"`
+	Destination string `sql:"destination" json:"destination,omitempty"`
+	Message     string `sql:"message" json:"message,omitempty"`
+	UUID        string `sql:"uuid" json:"uuid,omitempty"`
+}
+
 type Claims struct {
-	Email string `json:"email,omitempty"`
+	Email    string `json:"email,omitempty"`
+	UniqueId string `json:"unique_id"`
+	UUID     string `json:"uuid"`
 	jwt.RegisteredClaims
+}
+
+type CookieConfig struct {
+	Domain string `env:"DOMAIN"`
+	Type   string `env:"TYPE"`
 }
