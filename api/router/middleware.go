@@ -33,6 +33,10 @@ func NewMiddlewareImpl(logger *zap.SugaredLogger) *MiddlewareImpl {
 
 func (impl *MiddlewareImpl) CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", impl.cfg.CorsHost)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -59,15 +63,16 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 		//	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error parsing token."})
 		//	return
 		//}
-
-		context.Set(r, "email", "ramverma@gmail.com")
+		context.Set(r, "email", "ramverma2369@gmail.com")
+		context.Set(r, "uuid", "123")
+		context.Set(r, "device", "web")
 		next.ServeHTTP(w, r)
 	})
 }
 
 func (impl *MiddlewareImpl) LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		impl.logger.Infow("req:", "Path:", r.URL.Path)
+		impl.logger.Infow("req:", "Path:", r.URL.Path, "Method:", r.Method, "Email:", context.Get(r, "email"))
 		next.ServeHTTP(w, r)
 	})
 }
