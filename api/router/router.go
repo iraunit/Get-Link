@@ -24,7 +24,10 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.Use(r.middleware.AuthMiddleware)
 	r.Router.Use(r.middleware.LoggerMiddleware)
 
-	r.Router.HandleFunc("/get-all-links", r.Links.GetAllLinks).Methods("GET")
+	r.Router.HandleFunc("/", r.Links.AddLink).Methods("POST")
+	r.Router.HandleFunc("/", r.Links.DeleteLinks).Methods("DELETE")
+	r.Router.HandleFunc("/", r.Links.GetAllLinks).Methods("GET")
+	r.Router.HandleFunc("/ws", r.Links.SocketConnection).Methods("GET")
 
 	return r.Router
 }

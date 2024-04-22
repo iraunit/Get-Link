@@ -12,11 +12,13 @@ import (
 )
 
 type LinkService interface {
-	ReadMessages(conn *websocket.Conn, userEmail string)
-	WriteMessages(conn *websocket.Conn, userEmail string)
+	ReadMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
+	WriteMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
 	HandleDisconnection(conn *websocket.Conn, userEmail string)
 	HandleConnection(conn *websocket.Conn, userEmail string)
-	AddLink(data, userEmail string)
+	AddLink(userEmail string, data *util.GetLink)
+	GetAllLink(userEmail string, dst string, uuid string) *[]util.GetLink
+	DeleteLink(userEmail string, data *util.GetLink) error
 }
 
 type LinkServiceImpl struct {
@@ -37,9 +39,19 @@ func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *
 	}
 }
 
-func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string) {
+func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string, uuid string, device string) {
 	//Read message from Client and push to Redis
-
+	destination := device
+	if destination == "web" {
+		destination = "mobile"
+	} else {
+		destination = "web"
+	}
+	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encryption", "Error: ", err)
+		return
+	}
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
@@ -48,7 +60,18 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 			break
 		}
 		ctx := context.Background()
-		err = impl.client.Publish(ctx, fmt.Sprintf("%s_mobile", userEmail), string(message)).Err()
+		encryptedMsg, err := util.EncryptData(userEmail, string(message), impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in encryption", "Error: ", err)
+			continue
+		}
+		data := util.GetLink{
+			Destination: fmt.Sprintf("%s_%s", encryptedEmail, destination),
+			Message:     encryptedMsg,
+			UUID:        uuid,
+		}
+		impl.Repository.AddLink(&data)
+		err = impl.client.Publish(ctx, fmt.Sprintf("%s_%s", encryptedEmail, destination), encryptedMsg).Err()
 		if err != nil {
 			impl.logger.Errorw("Error in publishing message to Redis", "Error: ", err)
 			continue
@@ -56,10 +79,17 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 	}
 }
 
-func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string) {
+func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string, uuid string, device string) {
 	// Write message to clients from Redis
+	destination := device
+	
 	ctx := context.Background()
-	pubSub := impl.client.Subscribe(ctx, fmt.Sprintf("%s_web", userEmail))
+	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encryption", "Error: ", err)
+		return
+	}
+	pubSub := impl.client.Subscribe(ctx, fmt.Sprintf("%s_%s", encryptedEmail, destination))
 
 	for {
 		msg, err := pubSub.ReceiveMessage(ctx)
@@ -68,7 +98,12 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 			_ = conn.WriteMessage(websocket.TextMessage, []byte("Error in receiving message from Database. Try again."))
 			continue
 		}
-		err = conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+		decryptedMsg, err := util.DecryptData(userEmail, msg.Payload, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decryption", "Error: ", err)
+			continue
+		}
+		err = conn.WriteMessage(websocket.TextMessage, []byte(decryptedMsg))
 		if err != nil {
 			impl.logger.Errorw("Error in writing message to Web Sockets", "Error: ", err)
 			impl.HandleDisconnection(conn, userEmail)
@@ -84,24 +119,23 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 
 }
 
-func (impl *LinkServiceImpl) AddLink(data string, userEmail string, src string) {
+func (impl *LinkServiceImpl) AddLink(userEmail string, data *util.GetLink) {
 	encryptedMail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
-		impl.logger.Errorw("")
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return
 	}
-	encryptedData, err := util.EncryptData(userEmail, data, impl.logger)
+	encryptedData, err := util.EncryptData(userEmail, data.Message, impl.logger)
 
 	if err != nil {
-		impl.logger.Errorw("")
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return
 	}
-	userMessage := util.UserMessage{
-		Channel: fmt.Sprintf("%s_%s", encryptedMail, src),
-		Message: encryptedData,
-	}
 
-	impl.Repository.AddLink(&userMessage)
+	data.Message = encryptedData
+	data.Destination = fmt.Sprintf("%s_%s", encryptedMail, data.Destination)
+
+	impl.Repository.AddLink(data)
 }
 
 func (impl *LinkServiceImpl) HandleConnection(conn *websocket.Conn, userEmail string) {
@@ -157,4 +191,33 @@ func (impl *LinkServiceImpl) HandleDisconnection(conn *websocket.Conn, userEmail
 	if len(user.Connections) == 0 {
 		delete(*impl.Users, userEmail)
 	}
+}
+
+func (impl *LinkServiceImpl) GetAllLink(userEmail string, dst string, uuid string) *[]util.GetLink {
+	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
+		return nil
+	}
+	return impl.Repository.GetAllLink(fmt.Sprintf("%s_%s", encryptedEmail, dst), uuid)
+}
+
+func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *util.GetLink) error {
+	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
+		return err
+	}
+	data.Destination = fmt.Sprintf("%s_%s", encryptedEmail, "web")
+	data.Message = ""
+	err = impl.Repository.DeleteLink(data)
+	if err != nil {
+		return err
+	}
+	data.Destination = fmt.Sprintf("%s_%s", encryptedEmail, "mobile")
+	err = impl.Repository.DeleteLink(data)
+	if err != nil {
+		return err
+	}
+	return nil
 }

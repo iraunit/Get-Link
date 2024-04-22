@@ -15,6 +15,9 @@ import (
 
 type Links interface {
 	SocketConnection(w http.ResponseWriter, r *http.Request)
+	GetAllLinks(w http.ResponseWriter, r *http.Request)
+	DeleteLinks(w http.ResponseWriter, r *http.Request)
+	AddLink(w http.ResponseWriter, r *http.Request)
 }
 
 type LinksImpl struct {
@@ -58,7 +61,90 @@ func (impl *LinksImpl) SocketConnection(w http.ResponseWriter, r *http.Request) 
 	userEmail := muxContext.Get(r, "email").(string)
 	impl.LinkService.HandleConnection(conn, userEmail)
 
-	go impl.LinkService.ReadMessages(conn, userEmail)
-	go impl.LinkService.WriteMessages(conn, userEmail)
+	go impl.LinkService.ReadMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
+	go impl.LinkService.WriteMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
 
+}
+
+func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
+
+	userEmail := muxContext.Get(r, "email").(string)
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in decoding request body"})
+		return
+	}
+	if data.Destination == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
+		return
+	}
+	if data.UUID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
+		return
+	}
+	links := impl.LinkService.GetAllLink(userEmail, data.Destination, data.UUID)
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: links})
+}
+
+func (impl *LinksImpl) AddLink(w http.ResponseWriter, r *http.Request) {
+	userEmail := muxContext.Get(r, "email").(string)
+
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in decoding request body"})
+		return
+	}
+
+	if data.UUID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
+		return
+	}
+
+	if data.Destination == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
+		return
+	}
+
+	if data.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[message] is missing."})
+		return
+	}
+
+	impl.LinkService.AddLink(userEmail, &data)
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: "Link added successfully"})
+}
+
+func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
+	userEmail := muxContext.Get(r, "email").(string)
+	var data util.GetLink
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 500, Error: "Error in decoding request body"})
+		return
+	}
+	if data.ID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[id] is missing."})
+		return
+	}
+	err = impl.LinkService.DeleteLink(userEmail, &data)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in deleting link"})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: "Link deleted successfully"})
 }

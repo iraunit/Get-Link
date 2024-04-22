@@ -23,10 +23,10 @@ type RedisCfg struct {
 }
 
 type PgDbCfg struct {
-	User     string `env:"DB_USER"`
-	Address  string `env:"DB_ADDRESS"`
-	Password string `env:"DB_PASSWORD"`
-	Database string `env:"DB_DATABASE"`
+	User     string `env:"PG_DB_USER"`
+	Address  string `env:"PG_DB_ADDRESS"`
+	Password string `env:"PG_DB_PASSWORD"`
+	Database string `env:"PG_DB_DATABASE"`
 }
 
 type User struct {
@@ -41,12 +41,21 @@ type Response struct {
 	Message    string      `json:"message,omitempty"`
 }
 
-type UserMessage struct {
-	Channel string
-	Message string
+type GetLink struct {
+	ID          string `sql:"id" json:"id,omitempty"`
+	Destination string `sql:"destination" json:"destination,omitempty"`
+	Message     string `sql:"message" json:"message,omitempty"`
+	UUID        string `sql:"uuid" json:"uuid,omitempty"`
 }
 
 type Claims struct {
-	Email string `json:"email,omitempty"`
+	Email    string `json:"email,omitempty"`
+	UniqueId string `json:"unique_id"`
+	UUID     string `json:"uuid"`
 	jwt.RegisteredClaims
+}
+
+type CookieConfig struct {
+	Domain string `env:"DOMAIN"`
+	Type   string `env:"TYPE"`
 }
