@@ -42,16 +42,22 @@ type Response struct {
 }
 
 type GetLink struct {
-	ID          string `sql:"id" json:"id,omitempty"`
-	Destination string `sql:"destination" json:"destination,omitempty"`
-	Message     string `sql:"message" json:"message,omitempty"`
-	UUID        string `sql:"uuid" json:"uuid,omitempty"`
+	ID       int    `sql:"id" json:"id,omitempty"`
+	Sender   string `sql:"sender" json:"sender,omitempty"`
+	Receiver string `sql:"receiver" json:"receiver,omitempty"`
+	Message  string `sql:"message" json:"message,omitempty"`
+	UUID     string `sql:"uuid" json:"uuid,omitempty"`
+}
+
+type PubSubMessage struct {
+	Message string `json:"message,omitempty"`
+	UUID    string `json:"uuid,omitempty"`
+	ID      int    `json:"id,omitempty"`
 }
 
 type Claims struct {
-	Email    string `json:"email,omitempty"`
-	UniqueId string `json:"unique_id"`
-	UUID     string `json:"uuid"`
+	Email string `json:"email,omitempty"`
+	UUID  string `json:"uuid"`
 	jwt.RegisteredClaims
 }
 

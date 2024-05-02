@@ -1,15 +1,18 @@
 package repository
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/iraunit/get-link-backend/util"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"sync"
 )
 
 type Repository interface {
-	AddLink(getLink *util.GetLink)
+	AddLink(getLink *util.GetLink, receiverMail string)
 	DeleteLink(data *util.GetLink) error
 	GetAllLink(dst string, uuid string) *[]util.GetLink
 }
@@ -18,21 +21,32 @@ type Impl struct {
 	db     *pg.DB
 	lock   *sync.Mutex
 	logger *zap.SugaredLogger
+	client *redis.Client
 }
 
-func NewRepositoryImpl(db *pg.DB, logger *zap.SugaredLogger) *Impl {
+func NewRepositoryImpl(db *pg.DB, logger *zap.SugaredLogger, client *redis.Client) *Impl {
 	return &Impl{
 		db:     db,
 		lock:   &sync.Mutex{},
 		logger: logger,
+		client: client,
 	}
 }
 
-func (impl *Impl) AddLink(getLink *util.GetLink) {
+func (impl *Impl) AddLink(getLink *util.GetLink, receiverMail string) {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
-	_, err := impl.db.Model(getLink).Insert()
-
+	result, err := impl.db.Model(getLink).Insert()
+	if result.RowsAffected() > 0 {
+		pubSubMessage := util.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID}
+		pubSubMessageJson, err := json.Marshal(pubSubMessage)
+		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in encrypting json", "Error: ", err)
+			return
+		}
+		_ = impl.client.Publish(context.Background(), getLink.Destination, encryptedJson).Err()
+	}
 	if err != nil {
 		impl.logger.Errorw("Error in adding link", "Error: ", err)
 	}

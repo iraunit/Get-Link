@@ -1,7 +1,9 @@
 package router
 
 import (
+	"encoding/json"
 	"github.com/caarlos0/env"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/context"
 	"github.com/iraunit/get-link-backend/util"
 	"go.uber.org/zap"
@@ -34,7 +36,7 @@ func NewMiddlewareImpl(logger *zap.SugaredLogger) *MiddlewareImpl {
 func (impl *MiddlewareImpl) CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", impl.cfg.CorsHost)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		next.ServeHTTP(w, r)
@@ -43,29 +45,25 @@ func (impl *MiddlewareImpl) CorsMiddleware(next http.Handler) http.Handler {
 
 func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//cookie, err := r.Cookie("Authorization")
-		//if err != nil {
-		//	impl.logger.Errorw("Unauthorised Request. No cookie found.")
-		//	w.WriteHeader(http.StatusUnauthorized)
-		//	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 401, Error: "Unauthorised Request. No cookie found."})
-		//	return
-		//}
-		//
-		//tokenStr := cookie.Value
-		//claims := util.Claims{}
-		//_, err = jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
-		//	return []byte(impl.cfg.JwtKey), nil
-		//})
-		//
-		//if err != nil {
-		//	impl.logger.Errorw("Unauthorised Request. Invalid token.")
-		//	w.WriteHeader(http.StatusBadRequest)
-		//	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error parsing token."})
-		//	return
-		//}
-		context.Set(r, "email", "ramverma2369@gmail.com")
-		context.Set(r, "uuid", "123")
-		context.Set(r, "device", "web")
+		query := r.URL.Query()
+		tokenStr := query.Get("Authorization")
+
+		claims := util.Claims{}
+		_, err := jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
+			return []byte(impl.cfg.JwtKey), nil
+		})
+
+		if err != nil {
+			impl.logger.Errorw("Unauthorised Request. Invalid token.")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error parsing token."})
+			return
+		}
+
+		device := query.Get("device")
+		context.Set(r, "email", claims.Email)
+		context.Set(r, "uuid", claims.UUID)
+		context.Set(r, "device", device)
 		next.ServeHTTP(w, r)
 	})
 }
