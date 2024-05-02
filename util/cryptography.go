@@ -1,7 +1,6 @@
 package util
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
@@ -32,33 +31,34 @@ func PKCS5UnPadding(src []byte) []byte {
 }
 
 func EncryptData(encryptionKey string, plaintext string, logger *zap.SugaredLogger) (string, error) {
-	key := getEncryptionKey(encryptionKey)
-	iv := getIV(encryptionKey)
-
-	var plainTextBlock []byte
-	length := len(plaintext)
-
-	if length%16 != 0 {
-		extendBlock := 16 - (length % 16)
-		plainTextBlock = make([]byte, length+extendBlock)
-		copy(plainTextBlock[length:], bytes.Repeat([]byte{uint8(extendBlock)}, extendBlock))
-	} else {
-		plainTextBlock = make([]byte, length)
-	}
-
-	copy(plainTextBlock, plaintext)
-
-	block, err := aes.NewCipher([]byte(key))
-	if err != nil {
-		logger.Errorw("Error in creating cipher", "Error: ", err)
-		return "", err
-	}
-	mode := cipher.NewCBCEncrypter(block, []byte(iv))
-	ciphertext := make([]byte, len(plainTextBlock))
-	mode.CryptBlocks(ciphertext, plainTextBlock)
-	str := base64.StdEncoding.EncodeToString(ciphertext)
-
-	return str, nil
+	return plaintext, nil
+	//key := getEncryptionKey(encryptionKey)
+	//iv := getIV(encryptionKey)
+	//
+	//var plainTextBlock []byte
+	//length := len(plaintext)
+	//
+	//if length%16 != 0 {
+	//	extendBlock := 16 - (length % 16)
+	//	plainTextBlock = make([]byte, length+extendBlock)
+	//	copy(plainTextBlock[length:], bytes.Repeat([]byte{uint8(extendBlock)}, extendBlock))
+	//} else {
+	//	plainTextBlock = make([]byte, length)
+	//}
+	//
+	//copy(plainTextBlock, plaintext)
+	//
+	//block, err := aes.NewCipher([]byte(key))
+	//if err != nil {
+	//	logger.Errorw("Error in creating cipher", "Error: ", err)
+	//	return "", err
+	//}
+	//mode := cipher.NewCBCEncrypter(block, []byte(iv))
+	//ciphertext := make([]byte, len(plainTextBlock))
+	//mode.CryptBlocks(ciphertext, plainTextBlock)
+	//str := base64.StdEncoding.EncodeToString(ciphertext)
+	//
+	//return str, nil
 }
 
 func DecryptData(encryptionKey string, encryptedString string, logger *zap.SugaredLogger) (string, error) {
@@ -67,7 +67,8 @@ func DecryptData(encryptionKey string, encryptedString string, logger *zap.Sugar
 
 	cipherText, err := base64.StdEncoding.DecodeString(encryptedString)
 	if err != nil {
-
+		logger.Errorw("Error in decoding string", "Error: ", err)
+		return "", err
 	}
 
 	block, err := aes.NewCipher([]byte(key))

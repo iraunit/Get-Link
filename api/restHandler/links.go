@@ -69,25 +69,9 @@ func (impl *LinksImpl) SocketConnection(w http.ResponseWriter, r *http.Request) 
 func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
 
 	userEmail := muxContext.Get(r, "email").(string)
-	var data util.GetLink
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "Error in decoding request body"})
-		return
-	}
-	if data.Destination == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
-		return
-	}
-	if data.UUID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
-		return
-	}
-	links := impl.LinkService.GetAllLink(userEmail, data.Destination, data.UUID)
+	uuid := muxContext.Get(r, "uuid").(string)
+	device := muxContext.Get(r, "device").(string)
+	links := impl.LinkService.GetAllLink(userEmail, uuid, device)
 	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: links})
 }
 
@@ -106,12 +90,6 @@ func (impl *LinksImpl) AddLink(w http.ResponseWriter, r *http.Request) {
 	if data.UUID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[uuid] is missing."})
-		return
-	}
-
-	if data.Destination == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[destination] is missing."})
 		return
 	}
 
@@ -135,7 +113,7 @@ func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 500, Error: "Error in decoding request body"})
 		return
 	}
-	if data.ID == "" {
+	if data.ID == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 400, Error: "[id] is missing."})
 		return
