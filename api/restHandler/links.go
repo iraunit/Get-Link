@@ -61,8 +61,8 @@ func (impl *LinksImpl) SocketConnection(w http.ResponseWriter, r *http.Request) 
 	userEmail := muxContext.Get(r, "email").(string)
 	impl.LinkService.HandleConnection(conn, userEmail)
 
-	go impl.LinkService.ReadMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
-	go impl.LinkService.WriteMessages(conn, userEmail, muxContext.Get(r, "uuid").(string), muxContext.Get(r, "device").(string))
+	go impl.LinkService.ReadMessages(conn, userEmail, muxContext.Get(r, "uuid").(string))
+	go impl.LinkService.WriteMessages(conn, userEmail)
 
 }
 
@@ -70,8 +70,7 @@ func (impl *LinksImpl) GetAllLinks(w http.ResponseWriter, r *http.Request) {
 
 	userEmail := muxContext.Get(r, "email").(string)
 	uuid := muxContext.Get(r, "uuid").(string)
-	device := muxContext.Get(r, "device").(string)
-	links := impl.LinkService.GetAllLink(userEmail, uuid, device)
+	links := impl.LinkService.GetAllLink(userEmail, uuid)
 	_ = json.NewEncoder(w).Encode(util.Response{StatusCode: 200, Result: links})
 }
 

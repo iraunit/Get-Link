@@ -53,6 +53,7 @@ type PubSubMessage struct {
 	Message string `json:"message,omitempty"`
 	UUID    string `json:"uuid,omitempty"`
 	ID      int    `json:"id,omitempty"`
+	Sender  string `json:"sender,omitempty"`
 }
 
 type Claims struct {

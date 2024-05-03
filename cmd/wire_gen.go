@@ -22,7 +22,7 @@ func InitializeApp() *App {
 	client := repository.NewRedis(sugaredLogger)
 	db := repository.NewPgDb(sugaredLogger)
 	v := repository.NewUsersMap()
-	impl := repository.NewRepositoryImpl(db, sugaredLogger)
+	impl := repository.NewRepositoryImpl(db, sugaredLogger, client)
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
 	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl)

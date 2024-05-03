@@ -1,10 +1,6 @@
 package util
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
-	"fmt"
 	"go.uber.org/zap"
 )
 
@@ -62,28 +58,29 @@ func EncryptData(encryptionKey string, plaintext string, logger *zap.SugaredLogg
 }
 
 func DecryptData(encryptionKey string, encryptedString string, logger *zap.SugaredLogger) (string, error) {
-	key := getEncryptionKey(encryptionKey)
-	iv := getIV(encryptionKey)
-
-	cipherText, err := base64.StdEncoding.DecodeString(encryptedString)
-	if err != nil {
-		logger.Errorw("Error in decoding string", "Error: ", err)
-		return "", err
-	}
-
-	block, err := aes.NewCipher([]byte(key))
-	if err != nil {
-		logger.Errorw("Error in creating cipher", "Error: ", err)
-		return "", err
-	}
-
-	if len(cipherText)%aes.BlockSize != 0 {
-		return "", fmt.Errorf("block size cant be zero")
-	}
-
-	mode := cipher.NewCBCDecrypter(block, []byte(iv))
-	mode.CryptBlocks(cipherText, cipherText)
-	decryptedText := PKCS5UnPadding(cipherText)
-
-	return string(decryptedText), nil
+	return encryptedString, nil
+	//key := getEncryptionKey(encryptionKey)
+	//iv := getIV(encryptionKey)
+	//
+	//cipherText, err := base64.StdEncoding.DecodeString(encryptedString)
+	//if err != nil {
+	//	logger.Errorw("Error in decoding string", "Error: ", err)
+	//	return "", err
+	//}
+	//
+	//block, err := aes.NewCipher([]byte(key))
+	//if err != nil {
+	//	logger.Errorw("Error in creating cipher", "Error: ", err)
+	//	return "", err
+	//}
+	//
+	//if len(cipherText)%aes.BlockSize != 0 {
+	//	return "", fmt.Errorf("block size cant be zero")
+	//}
+	//
+	//mode := cipher.NewCBCDecrypter(block, []byte(iv))
+	//mode.CryptBlocks(cipherText, cipherText)
+	//decryptedText := PKCS5UnPadding(cipherText)
+	//
+	//return string(decryptedText), nil
 }

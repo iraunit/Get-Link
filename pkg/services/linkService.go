@@ -11,12 +11,12 @@ import (
 )
 
 type LinkService interface {
-	ReadMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
-	WriteMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
+	ReadMessages(conn *websocket.Conn, userEmail string, uuid string)
+	WriteMessages(conn *websocket.Conn, userEmail string)
 	HandleDisconnection(conn *websocket.Conn, userEmail string)
 	HandleConnection(conn *websocket.Conn, userEmail string)
 	AddLink(userEmail string, data *util.GetLink)
-	GetAllLink(userEmail string, uuid string, device string) *[]util.GetLink
+	GetAllLink(userEmail string, uuid string) *[]util.GetLink
 	DeleteLink(userEmail string, data *util.GetLink) error
 }
 
@@ -73,7 +73,7 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 	}
 }
 
-func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string, uuid string) {
+func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string) {
 	// Write message to clients from Redis
 
 	ctx := context.Background()
@@ -192,7 +192,7 @@ func (impl *LinkServiceImpl) HandleDisconnection(conn *websocket.Conn, userEmail
 	}
 }
 
-func (impl *LinkServiceImpl) GetAllLink(userEmail string, uuid string, device string) *[]util.GetLink {
+func (impl *LinkServiceImpl) GetAllLink(userEmail string, uuid string) *[]util.GetLink {
 	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)

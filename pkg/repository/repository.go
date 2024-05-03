@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/redis/go-redis/v9"
@@ -38,14 +37,14 @@ func (impl *Impl) AddLink(getLink *util.GetLink, receiverMail string) {
 	defer impl.lock.Unlock()
 	result, err := impl.db.Model(getLink).Insert()
 	if result.RowsAffected() > 0 {
-		pubSubMessage := util.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID}
+		pubSubMessage := util.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID, Sender: getLink.Sender}
 		pubSubMessageJson, err := json.Marshal(pubSubMessage)
 		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting json", "Error: ", err)
 			return
 		}
-		_ = impl.client.Publish(context.Background(), getLink.Destination, encryptedJson).Err()
+		_ = impl.client.Publish(context.Background(), getLink.Receiver, encryptedJson).Err()
 	}
 	if err != nil {
 		impl.logger.Errorw("Error in adding link", "Error: ", err)
@@ -63,17 +62,20 @@ func (impl *Impl) DeleteLink(data *util.GetLink) error {
 	return nil
 }
 
-func (impl *Impl) GetAllLink(dst string, uuid string) *[]util.GetLink {
+func (impl *Impl) GetAllLink(receiver string, uuid string) *[]util.GetLink {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 
 	var result []util.GetLink
-	impl.logger.Infow("Info", "Destination", dst, "UUID", uuid)
-	err := impl.db.Model(&result).Where("destination=?", dst).Where("uuid!=?", uuid).Select()
+	impl.logger.Infow("Info", "Receiver", receiver, "UUID", uuid)
+	err := impl.db.Model(&result).
+		Column("id", "sender", "message", "uuid").
+		Where("receiver=?", receiver).
+		Where("uuid != ?", "uuid").
+		Select()
 	if err != nil {
 		impl.logger.Errorw("Error in getting link", "Error: ", err)
 		return nil
 	}
-	fmt.Println(result)
 	return &result
 }
