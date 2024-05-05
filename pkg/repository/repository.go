@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 	"github.com/go-pg/pg"
 	"github.com/iraunit/get-link-backend/util"
+	"github.com/iraunit/get-link-backend/util/bean"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"sync"
 )
 
 type Repository interface {
-	AddLink(getLink *util.GetLink, receiverMail string)
-	DeleteLink(data *util.GetLink) error
-	GetAllLink(dst string, uuid string) *[]util.GetLink
+	AddLink(getLink *bean.GetLink, receiverMail string)
+	DeleteLink(data *bean.GetLink) error
+	GetAllLink(dst string, uuid string) *[]bean.GetLink
+	Verify(claims *bean.UserSocialData) error
 }
 
 type Impl struct {
@@ -32,12 +34,12 @@ func NewRepositoryImpl(db *pg.DB, logger *zap.SugaredLogger, client *redis.Clien
 	}
 }
 
-func (impl *Impl) AddLink(getLink *util.GetLink, receiverMail string) {
+func (impl *Impl) AddLink(getLink *bean.GetLink, receiverMail string) {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 	result, err := impl.db.Model(getLink).Insert()
 	if result.RowsAffected() > 0 {
-		pubSubMessage := util.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID, Sender: getLink.Sender}
+		pubSubMessage := bean.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID, Sender: getLink.Sender}
 		pubSubMessageJson, err := json.Marshal(pubSubMessage)
 		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
 		if err != nil {
@@ -51,7 +53,7 @@ func (impl *Impl) AddLink(getLink *util.GetLink, receiverMail string) {
 	}
 }
 
-func (impl *Impl) DeleteLink(data *util.GetLink) error {
+func (impl *Impl) DeleteLink(data *bean.GetLink) error {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 	_, err := impl.db.Model(data).WherePK().Delete()
@@ -62,20 +64,31 @@ func (impl *Impl) DeleteLink(data *util.GetLink) error {
 	return nil
 }
 
-func (impl *Impl) GetAllLink(receiver string, uuid string) *[]util.GetLink {
+func (impl *Impl) GetAllLink(receiver string, uuid string) *[]bean.GetLink {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 
-	var result []util.GetLink
+	var result []bean.GetLink
 	impl.logger.Infow("Info", "Receiver", receiver, "UUID", uuid)
 	err := impl.db.Model(&result).
 		Column("id", "sender", "message", "uuid").
 		Where("receiver=?", receiver).
-		Where("uuid != ?", "uuid").
+		Where("uuid != ?", uuid).
 		Select()
 	if err != nil {
 		impl.logger.Errorw("Error in getting link", "Error: ", err)
 		return nil
 	}
 	return &result
+}
+
+func (impl *Impl) Verify(claims *bean.UserSocialData) error {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+	_, err := impl.db.Model(claims).WherePK().Update()
+	if err != nil {
+		impl.logger.Errorw("Error in verifying link", "Error: ", err)
+		return err
+	}
+	return nil
 }

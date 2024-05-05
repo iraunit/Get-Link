@@ -25,7 +25,12 @@ func InitializeApp() *App {
 	impl := repository.NewRepositoryImpl(db, sugaredLogger, client)
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
-	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl)
+	restClientImpl := util.NewRestClientImpl(sugaredLogger)
+	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
+	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
+	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl)
+	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
+	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl)
 	app := NewApp(sugaredLogger, muxRouter)
 	return app
 }
