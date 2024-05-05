@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/caarlos0/env"
+	"github.com/gorilla/handlers"
 	"github.com/iraunit/get-link-backend/api/router"
-	"github.com/iraunit/get-link-backend/util"
+	"github.com/iraunit/get-link-backend/util/bean"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"net/http"
@@ -28,7 +29,7 @@ func (app *App) Start() {
 		app.Logger.Errorw("Error loading Env", zap.Error(err))
 	}
 
-	cfg := util.MainCfg{}
+	cfg := bean.MainCfg{}
 	if err := env.Parse(&cfg); err != nil {
 		app.Logger.Errorw("Error loading Cfg from env", zap.Error(err))
 	}
@@ -36,7 +37,11 @@ func (app *App) Start() {
 	app.Logger.Infow(fmt.Sprintf("Starting server on port %s", cfg.Port))
 	app.MuxRouter.GetRouter()
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), app.MuxRouter.Router); err != nil {
+	corsOrigins := handlers.AllowedOrigins([]string{"chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"})
+	corsHeaders := handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding"})
+	corsMethods := handlers.AllowedMethods([]string{"POST", "DELETE", "GET", "OPTIONS"})
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), handlers.CORS(corsOrigins, corsHeaders, corsMethods)(app.MuxRouter.Router)); err != nil {
 		app.Logger.Fatal(fmt.Sprintf("Cannot start server on port %s", cfg.Port), "Error: ", err)
 	}
 }

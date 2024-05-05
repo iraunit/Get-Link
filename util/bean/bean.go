@@ -1,4 +1,4 @@
-package util
+package bean
 
 import (
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +13,10 @@ type MainCfg struct {
 type MiddlewareCfg struct {
 	JwtKey   string `env:"JWT_KEY" envDefault:"secret"`
 	CorsHost string `env:"CORS_HOST" envDefault:"*"`
+}
+
+type TokenConfig struct {
+	JwtKey string `env:"JWT_KEY" envDefault:"secret"`
 }
 
 type RedisCfg struct {
@@ -62,7 +66,36 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type EmailVerificationClaims struct {
+	Email            string `json:"email,omitempty"`
+	WhatAppNumber    string `json:"whatsapp_number,omitempty"`
+	TelegramUsername string `json:"telegram_username,omitempty"`
+	jwt.RegisteredClaims
+}
+
 type CookieConfig struct {
 	Domain string `env:"DOMAIN"`
 	Type   string `env:"TYPE"`
+}
+
+type WhatsAppConfig struct {
+	Baseurl     string `env:"BASE_URL"`
+	PhoneID     string `env:"PHONE_ID"`
+	AuthToken   string `env:"WHATSAPP_API_TOKEN"`
+	VerifyToken string `env:"VERIFY_TOKEN"`
+}
+
+type UserSocialData struct {
+	Email    string `sql:"email" json:"email,omitempty"`
+	Whatsapp string `sql:"app_name" json:"app_name,omitempty"`
+	Telegram string `sql:"telegram" json:"telegram,omitempty"`
+	jwt.RegisteredClaims
+}
+
+type MailConfig struct {
+	Host     string `env:"MAIL_HOST"`
+	Port     string `env:"MAIL_PORT"`
+	Username string `env:"MAIL_USERNAME"`
+	Password string `env:"MAIL_PASSWORD"`
+	From     string `env:"MAIL_FROM"`
 }

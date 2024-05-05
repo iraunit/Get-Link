@@ -24,6 +24,11 @@ func InitializeApp() *App {
 		repository.NewRepositoryImpl, wire.Bind(new(repository.Repository), new(*repository.Impl)),
 		router.NewMiddlewareImpl, wire.Bind(new(router.Middleware), new(*router.MiddlewareImpl)),
 		restHandler.NewLinksImpl, wire.Bind(new(restHandler.Links), new(*restHandler.LinksImpl)),
+		restHandler.NewWhatsappImpl, wire.Bind(new(restHandler.Whatsapp), new(*restHandler.WhatsappImpl)),
+		services.NewWhatsappServiceImpl, wire.Bind(new(services.WhatsappService), new(*services.WhatsappServiceImpl)),
+		util.NewRestClientImpl, wire.Bind(new(util.RestClient), new(*util.RestClientImpl)),
+		services.NewTokenServiceImpl, wire.Bind(new(services.TokenService), new(*services.TokenServiceImpl)),
+		services.NewMailServiceImpl, wire.Bind(new(services.MailService), new(*services.MailServiceImpl)),
 	)
 	return &App{}
 }
