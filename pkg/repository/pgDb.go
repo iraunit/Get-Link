@@ -24,7 +24,7 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "get_links" (
 		"id" SERIAL PRIMARY KEY,
-		"message" VARCHAR(102400),
+		"message" VARCHAR(102400) UNIQUE,
 		"sender" VARCHAR(64),
 		"receiver" VARCHAR(64),
 		"uuid" VARCHAR(512)
