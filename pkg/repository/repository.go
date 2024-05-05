@@ -12,10 +12,11 @@ import (
 )
 
 type Repository interface {
-	AddLink(getLink *bean.GetLink, receiverMail string)
+	AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, receiverMail string)
 	DeleteLink(data *bean.GetLink) error
 	GetAllLink(dst string, uuid string) *[]bean.GetLink
-	Verify(claims *bean.UserSocialData) error
+	VerifyEmail(claims *bean.UserSocialData) error
+	GetEmailsFromNumber(number string) ([]bean.UserSocialData, error)
 }
 
 type Impl struct {
@@ -34,19 +35,20 @@ func NewRepositoryImpl(db *pg.DB, logger *zap.SugaredLogger, client *redis.Clien
 	}
 }
 
-func (impl *Impl) AddLink(getLink *bean.GetLink, receiverMail string) {
+func (impl *Impl) AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, receiverMail string) {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 	result, err := impl.db.Model(getLink).Insert()
 	if result.RowsAffected() > 0 {
-		pubSubMessage := bean.PubSubMessage{Message: getLink.Message, UUID: getLink.UUID, ID: getLink.ID, Sender: getLink.Sender}
+		pubSubMessage := bean.PubSubMessage{Message: decryptedData.Message, UUID: decryptedData.UUID, ID: decryptedData.ID, Sender: decryptedData.Sender}
 		pubSubMessageJson, err := json.Marshal(pubSubMessage)
 		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting json", "Error: ", err)
 			return
+		} else {
+			_ = impl.client.Publish(context.Background(), getLink.Receiver, encryptedJson).Err()
 		}
-		_ = impl.client.Publish(context.Background(), getLink.Receiver, encryptedJson).Err()
 	}
 	if err != nil {
 		impl.logger.Errorw("Error in adding link", "Error: ", err)
@@ -82,13 +84,38 @@ func (impl *Impl) GetAllLink(receiver string, uuid string) *[]bean.GetLink {
 	return &result
 }
 
-func (impl *Impl) Verify(claims *bean.UserSocialData) error {
+func (impl *Impl) VerifyEmail(claims *bean.UserSocialData) error {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
-	_, err := impl.db.Model(claims).WherePK().Update()
+	var prevRecord []bean.UserSocialData
+	err := impl.db.Model(&prevRecord).Where("email = ?", claims.Email).Select()
 	if err != nil {
 		impl.logger.Errorw("Error in verifying link", "Error: ", err)
 		return err
 	}
-	return nil
+	if prevRecord == nil {
+		_, err = impl.db.Model(claims).Insert()
+		if err != nil {
+			impl.logger.Errorw("Error in verifying link", "Error: ", err)
+		}
+		return err
+	} else {
+		_, err = impl.db.Model(claims).Where("email=?", claims.Email).Update()
+		if err != nil {
+			impl.logger.Errorw("Error in verifying link", "Error: ", err)
+		}
+		return err
+	}
+}
+
+func (impl *Impl) GetEmailsFromNumber(number string) ([]bean.UserSocialData, error) {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+	var result []bean.UserSocialData
+	err := impl.db.Model(&result).Column("email").Where("whatsapp_number = ?", number).Select()
+	if err != nil {
+		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
+		return nil, err
+	}
+	return result, nil
 }

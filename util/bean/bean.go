@@ -86,10 +86,9 @@ type WhatsAppConfig struct {
 }
 
 type UserSocialData struct {
-	Email    string `sql:"email" json:"email,omitempty"`
-	Whatsapp string `sql:"app_name" json:"app_name,omitempty"`
-	Telegram string `sql:"telegram" json:"telegram,omitempty"`
-	jwt.RegisteredClaims
+	Email            string `sql:"email" json:"email,omitempty"`
+	WhatAppNumber    string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
+	TelegramUsername string `sql:"telegram_username" json:"telegram_username,omitempty"`
 }
 
 type MailConfig struct {
@@ -98,4 +97,9 @@ type MailConfig struct {
 	Username string `env:"MAIL_USERNAME"`
 	Password string `env:"MAIL_PASSWORD"`
 	From     string `env:"MAIL_FROM"`
+}
+
+type EncryptDecryptConfig struct {
+	EncryptionKey string `env:"ENCRYPTION_KEY" envDefault:"secret"`
+	DecryptionKey string `env:"DECRYPTION_KEY" envDefault:"secret"`
 }
