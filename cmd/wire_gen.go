@@ -22,10 +22,15 @@ func InitializeApp() *App {
 	client := repository.NewRedis(sugaredLogger)
 	db := repository.NewPgDb(sugaredLogger)
 	v := repository.NewUsersMap()
-	impl := repository.NewRepositoryImpl(db, sugaredLogger)
+	impl := repository.NewRepositoryImpl(db, sugaredLogger, client)
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
-	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl)
+	restClientImpl := util.NewRestClientImpl(sugaredLogger)
+	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
+	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
+	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl)
+	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
+	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl)
 	app := NewApp(sugaredLogger, muxRouter)
 	return app
 }

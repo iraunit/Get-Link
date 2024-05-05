@@ -1,8 +1,10 @@
 package repository
 
-import "github.com/iraunit/get-link-backend/util"
+import (
+	"github.com/iraunit/get-link-backend/util/bean"
+)
 
-func NewUsersMap() *map[string]util.User {
-	usersMap := make(map[string]util.User)
+func NewUsersMap() *map[string]bean.User {
+	usersMap := make(map[string]bean.User)
 	return &usersMap
 }

@@ -2,51 +2,56 @@ package services
 
 import (
 	"context"
-	"fmt"
+	"github.com/caarlos0/env"
 	"github.com/gorilla/websocket"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
+	"github.com/iraunit/get-link-backend/util/bean"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"sync"
 )
 
 type LinkService interface {
-	ReadMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
-	WriteMessages(conn *websocket.Conn, userEmail string, uuid string, device string)
+	ReadMessages(conn *websocket.Conn, userEmail string, uuid string)
+	WriteMessages(conn *websocket.Conn, userEmail string)
 	HandleDisconnection(conn *websocket.Conn, userEmail string)
 	HandleConnection(conn *websocket.Conn, userEmail string)
-	AddLink(userEmail string, data *util.GetLink)
-	GetAllLink(userEmail string, dst string, uuid string) *[]util.GetLink
-	DeleteLink(userEmail string, data *util.GetLink) error
+	AddLink(userEmail string, data *bean.GetLink)
+	GetAllLink(userEmail string, uuid string) *[]bean.GetLink
+	DeleteLink(userEmail string, data *bean.GetLink) error
+	VerifyMail(userEmail string, claims *bean.UserSocialData) error
 }
 
 type LinkServiceImpl struct {
 	logger     *zap.SugaredLogger
 	client     *redis.Client
 	lock       *sync.Mutex
-	Users      *map[string]util.User
+	Users      *map[string]bean.User
 	Repository repository.Repository
+	cfg        bean.EncryptDecryptConfig
 }
 
-func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *map[string]util.User, repository repository.Repository) *LinkServiceImpl {
+func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *map[string]bean.User, repository repository.Repository) *LinkServiceImpl {
+	cfg := bean.EncryptDecryptConfig{}
+
+	err := env.Parse(&cfg)
+	if err != nil {
+		logger.Errorw("Error in parsing config", "Error: ", err)
+	}
+
 	return &LinkServiceImpl{
 		logger:     logger,
 		client:     client,
 		lock:       &sync.Mutex{},
 		Users:      users,
 		Repository: repository,
+		cfg:        cfg,
 	}
 }
 
-func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string, uuid string, device string) {
+func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string, uuid string) {
 	//Read message from Client and push to Redis
-	destination := device
-	if destination == "web" {
-		destination = "mobile"
-	} else {
-		destination = "web"
-	}
 	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encryption", "Error: ", err)
@@ -65,13 +70,15 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 			impl.logger.Errorw("Error in encryption", "Error: ", err)
 			continue
 		}
-		data := util.GetLink{
-			Destination: fmt.Sprintf("%s_%s", encryptedEmail, destination),
-			Message:     encryptedMsg,
-			UUID:        uuid,
+
+		data := bean.GetLink{
+			Sender:   encryptedEmail,
+			Receiver: encryptedEmail,
+			Message:  encryptedMsg,
+			UUID:     uuid,
 		}
-		impl.Repository.AddLink(&data)
-		err = impl.client.Publish(ctx, fmt.Sprintf("%s_%s", encryptedEmail, destination), encryptedMsg).Err()
+		impl.Repository.AddLink(&data, &bean.GetLink{Sender: userEmail, Receiver: userEmail, Message: string(message), UUID: uuid}, userEmail)
+		err = impl.client.Publish(ctx, encryptedEmail, encryptedMsg).Err()
 		if err != nil {
 			impl.logger.Errorw("Error in publishing message to Redis", "Error: ", err)
 			continue
@@ -79,17 +86,16 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 	}
 }
 
-func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string, uuid string, device string) {
+func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail string) {
 	// Write message to clients from Redis
-	destination := device
-	
+
 	ctx := context.Background()
 	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encryption", "Error: ", err)
 		return
 	}
-	pubSub := impl.client.Subscribe(ctx, fmt.Sprintf("%s_%s", encryptedEmail, destination))
+	pubSub := impl.client.Subscribe(ctx, encryptedEmail)
 
 	for {
 		msg, err := pubSub.ReceiveMessage(ctx)
@@ -106,8 +112,8 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 		err = conn.WriteMessage(websocket.TextMessage, []byte(decryptedMsg))
 		if err != nil {
 			impl.logger.Errorw("Error in writing message to Web Sockets", "Error: ", err)
-			impl.HandleDisconnection(conn, userEmail)
 			_ = pubSub.Close()
+			impl.HandleDisconnection(conn, userEmail)
 			break
 		}
 
@@ -119,30 +125,38 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 
 }
 
-func (impl *LinkServiceImpl) AddLink(userEmail string, data *util.GetLink) {
-	encryptedMail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+func (impl *LinkServiceImpl) AddLink(userEmail string, data *bean.GetLink) {
+	receiverMail := data.Receiver
+	decryptedData := bean.GetLink{ID: data.ID, Sender: data.Sender, Receiver: data.Receiver, Message: data.Message, UUID: data.UUID}
+	receiverMailEncrypted, err := util.EncryptData(data.Receiver, data.Receiver, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return
 	}
+	senderMailEncrypted, err := util.EncryptData(data.Receiver, data.Sender, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
+		return
+	}
+
 	encryptedData, err := util.EncryptData(userEmail, data.Message, impl.logger)
-
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return
 	}
 
+	data.Sender = senderMailEncrypted
+	data.Receiver = receiverMailEncrypted
 	data.Message = encryptedData
-	data.Destination = fmt.Sprintf("%s_%s", encryptedMail, data.Destination)
 
-	impl.Repository.AddLink(data)
+	impl.Repository.AddLink(data, &decryptedData, receiverMail)
 }
 
 func (impl *LinkServiceImpl) HandleConnection(conn *websocket.Conn, userEmail string) {
 	impl.lock.Lock()
 	user, ok := (*impl.Users)[userEmail]
 	if !ok {
-		user = util.User{
+		user = bean.User{
 			Lock:        &sync.Mutex{},
 			Connections: make([]*websocket.Conn, 0),
 		}
@@ -193,31 +207,63 @@ func (impl *LinkServiceImpl) HandleDisconnection(conn *websocket.Conn, userEmail
 	}
 }
 
-func (impl *LinkServiceImpl) GetAllLink(userEmail string, dst string, uuid string) *[]util.GetLink {
+func (impl *LinkServiceImpl) GetAllLink(userEmail string, uuid string) *[]bean.GetLink {
 	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return nil
 	}
-	return impl.Repository.GetAllLink(fmt.Sprintf("%s_%s", encryptedEmail, dst), uuid)
+
+	allLinks := impl.Repository.GetAllLink(encryptedEmail, uuid)
+	for i := 0; i < len(*allLinks); i++ {
+		(*allLinks)[i].Sender, err = util.DecryptData(userEmail, (*allLinks)[i].Sender, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+		(*allLinks)[i].Receiver, err = util.DecryptData(userEmail, (*allLinks)[i].Receiver, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+		(*allLinks)[i].Message, err = util.DecryptData(userEmail, (*allLinks)[i].Message, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+	}
+	return allLinks
 }
 
-func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *util.GetLink) error {
+func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *bean.GetLink) error {
 	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return err
 	}
-	data.Destination = fmt.Sprintf("%s_%s", encryptedEmail, "web")
-	data.Message = ""
-	err = impl.Repository.DeleteLink(data)
+	data.Receiver = encryptedEmail
+	return impl.Repository.DeleteLink(data)
+}
+
+func (impl *LinkServiceImpl) VerifyMail(userEmail string, claims *bean.UserSocialData) error {
+	encryptedEmail, err := util.EncryptData(impl.cfg.EncryptionKey, userEmail, impl.logger)
 	if err != nil {
+		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return err
 	}
-	data.Destination = fmt.Sprintf("%s_%s", encryptedEmail, "mobile")
-	err = impl.Repository.DeleteLink(data)
-	if err != nil {
-		return err
+	claims.Email = encryptedEmail
+	if claims.WhatAppNumber != "" {
+		encryptedWhatsapp, err := util.EncryptData(impl.cfg.EncryptionKey, claims.WhatAppNumber, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
+			return err
+		}
+		claims.WhatAppNumber = encryptedWhatsapp
 	}
-	return nil
+	if claims.TelegramUsername != "" {
+		encryptedTelegram, err := util.EncryptData(impl.cfg.EncryptionKey, claims.TelegramUsername, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
+			return err
+		}
+		claims.TelegramUsername = encryptedTelegram
+	}
+	return impl.Repository.VerifyEmail(claims)
 }

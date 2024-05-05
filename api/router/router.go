@@ -9,18 +9,20 @@ type MuxRouter struct {
 	Router     *mux.Router
 	middleware Middleware
 	Links      restHandler.Links
+	Whatsapp   restHandler.Whatsapp
 }
 
-func NewMuxRouter(middleware Middleware, links restHandler.Links) *MuxRouter {
+func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restHandler.Whatsapp) *MuxRouter {
 	return &MuxRouter{
 		Router:     mux.NewRouter(),
 		middleware: middleware,
 		Links:      links,
+		Whatsapp:   whatsapp,
 	}
 }
 
 func (r *MuxRouter) GetRouter() *mux.Router {
-	r.Router.Use(r.middleware.CorsMiddleware)
+
 	r.Router.Use(r.middleware.AuthMiddleware)
 	r.Router.Use(r.middleware.LoggerMiddleware)
 
@@ -28,6 +30,9 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/", r.Links.DeleteLinks).Methods("DELETE")
 	r.Router.HandleFunc("/", r.Links.GetAllLinks).Methods("GET")
 	r.Router.HandleFunc("/ws", r.Links.SocketConnection).Methods("GET")
+	r.Router.HandleFunc("/verifyEmail", r.Links.VerifyEmail).Methods("GET")
+	r.Router.HandleFunc("/whatsapp", r.Whatsapp.Verify).Methods("GET")
+	r.Router.HandleFunc("/whatsapp", r.Whatsapp.HandleMessage).Methods("POST")
 
 	return r.Router
 }
