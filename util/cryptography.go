@@ -26,9 +26,25 @@ func getIV(encryptionKey string) string {
 }
 
 func PKCS5UnPadding(src []byte) []byte {
-	length := len(src)
-	unPadding := int(src[length-1])
-	return src[:(length - unPadding)]
+	//length := len(src)
+	//unPadding := int(src[length-1])
+	//if unPadding > length {
+	//	return src
+	//}
+	//return src[:(length - unPadding)]
+	if len(src) == 0 {
+		return nil
+	}
+	padding := int(src[len(src)-1])
+	if padding >= len(src) {
+		return nil
+	}
+	for i := len(src) - 1; i > len(src)-padding-1; i-- {
+		if int(src[i]) != padding {
+			return nil
+		}
+	}
+	return src[:len(src)-padding]
 }
 
 func EncryptData(encryptionKey string, plaintext string, logger *zap.SugaredLogger) (string, error) {

@@ -30,7 +30,7 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/", r.Links.DeleteLinks).Methods("DELETE")
 	r.Router.HandleFunc("/", r.Links.GetAllLinks).Methods("GET")
 	r.Router.HandleFunc("/ws", r.Links.SocketConnection).Methods("GET")
-	r.Router.HandleFunc("/verify", r.Links.Verify).Methods("GET")
+	r.Router.HandleFunc("/verifyEmail", r.Links.VerifyEmail).Methods("GET")
 	r.Router.HandleFunc("/whatsapp", r.Whatsapp.Verify).Methods("GET")
 	r.Router.HandleFunc("/whatsapp", r.Whatsapp.HandleMessage).Methods("POST")
 

@@ -28,7 +28,7 @@ func InitializeApp() *App {
 	restClientImpl := util.NewRestClientImpl(sugaredLogger)
 	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
 	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
-	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl)
+	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl)
 	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
 	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl)
 	app := NewApp(sugaredLogger, muxRouter)

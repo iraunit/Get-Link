@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"github.com/caarlos0/env"
 	"github.com/gorilla/websocket"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
@@ -19,7 +20,7 @@ type LinkService interface {
 	AddLink(userEmail string, data *bean.GetLink)
 	GetAllLink(userEmail string, uuid string) *[]bean.GetLink
 	DeleteLink(userEmail string, data *bean.GetLink) error
-	Verify(userEmail string, claims *bean.UserSocialData) error
+	VerifyMail(userEmail string, claims *bean.UserSocialData) error
 }
 
 type LinkServiceImpl struct {
@@ -28,15 +29,24 @@ type LinkServiceImpl struct {
 	lock       *sync.Mutex
 	Users      *map[string]bean.User
 	Repository repository.Repository
+	cfg        bean.EncryptDecryptConfig
 }
 
 func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *map[string]bean.User, repository repository.Repository) *LinkServiceImpl {
+	cfg := bean.EncryptDecryptConfig{}
+
+	err := env.Parse(&cfg)
+	if err != nil {
+		logger.Errorw("Error in parsing config", "Error: ", err)
+	}
+
 	return &LinkServiceImpl{
 		logger:     logger,
 		client:     client,
 		lock:       &sync.Mutex{},
 		Users:      users,
 		Repository: repository,
+		cfg:        cfg,
 	}
 }
 
@@ -60,13 +70,14 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 			impl.logger.Errorw("Error in encryption", "Error: ", err)
 			continue
 		}
+
 		data := bean.GetLink{
 			Sender:   encryptedEmail,
 			Receiver: encryptedEmail,
 			Message:  encryptedMsg,
 			UUID:     uuid,
 		}
-		impl.Repository.AddLink(&data, userEmail)
+		impl.Repository.AddLink(&data, &bean.GetLink{Sender: userEmail, Receiver: userEmail, Message: string(message), UUID: uuid}, userEmail)
 		err = impl.client.Publish(ctx, encryptedEmail, encryptedMsg).Err()
 		if err != nil {
 			impl.logger.Errorw("Error in publishing message to Redis", "Error: ", err)
@@ -116,6 +127,7 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 
 func (impl *LinkServiceImpl) AddLink(userEmail string, data *bean.GetLink) {
 	receiverMail := data.Receiver
+	decryptedData := bean.GetLink{ID: data.ID, Sender: data.Sender, Receiver: data.Receiver, Message: data.Message, UUID: data.UUID}
 	receiverMailEncrypted, err := util.EncryptData(data.Receiver, data.Receiver, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
@@ -136,7 +148,8 @@ func (impl *LinkServiceImpl) AddLink(userEmail string, data *bean.GetLink) {
 	data.Sender = senderMailEncrypted
 	data.Receiver = receiverMailEncrypted
 	data.Message = encryptedData
-	impl.Repository.AddLink(data, receiverMail)
+
+	impl.Repository.AddLink(data, &decryptedData, receiverMail)
 }
 
 func (impl *LinkServiceImpl) HandleConnection(conn *websocket.Conn, userEmail string) {
@@ -201,7 +214,22 @@ func (impl *LinkServiceImpl) GetAllLink(userEmail string, uuid string) *[]bean.G
 		return nil
 	}
 
-	return impl.Repository.GetAllLink(encryptedEmail, uuid)
+	allLinks := impl.Repository.GetAllLink(encryptedEmail, uuid)
+	for i := 0; i < len(*allLinks); i++ {
+		(*allLinks)[i].Sender, err = util.DecryptData(userEmail, (*allLinks)[i].Sender, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+		(*allLinks)[i].Receiver, err = util.DecryptData(userEmail, (*allLinks)[i].Receiver, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+		(*allLinks)[i].Message, err = util.DecryptData(userEmail, (*allLinks)[i].Message, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+		}
+	}
+	return allLinks
 }
 
 func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *bean.GetLink) error {
@@ -214,28 +242,28 @@ func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *bean.GetLink) er
 	return impl.Repository.DeleteLink(data)
 }
 
-func (impl *LinkServiceImpl) Verify(userEmail string, claims *bean.UserSocialData) error {
-	encryptedEmail, err := util.EncryptData(userEmail, userEmail, impl.logger)
+func (impl *LinkServiceImpl) VerifyMail(userEmail string, claims *bean.UserSocialData) error {
+	encryptedEmail, err := util.EncryptData(impl.cfg.EncryptionKey, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return err
 	}
 	claims.Email = encryptedEmail
-	if claims.Whatsapp != "" {
-		encryptedWhatsapp, err := util.EncryptData(userEmail, claims.Whatsapp, impl.logger)
+	if claims.WhatAppNumber != "" {
+		encryptedWhatsapp, err := util.EncryptData(impl.cfg.EncryptionKey, claims.WhatAppNumber, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 			return err
 		}
-		claims.Whatsapp = encryptedWhatsapp
+		claims.WhatAppNumber = encryptedWhatsapp
 	}
-	if claims.Telegram != "" {
-		encryptedTelegram, err := util.EncryptData(userEmail, claims.Telegram, impl.logger)
+	if claims.TelegramUsername != "" {
+		encryptedTelegram, err := util.EncryptData(impl.cfg.EncryptionKey, claims.TelegramUsername, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 			return err
 		}
-		claims.Telegram = encryptedTelegram
+		claims.TelegramUsername = encryptedTelegram
 	}
-	return impl.Repository.Verify(claims)
+	return impl.Repository.VerifyEmail(claims)
 }

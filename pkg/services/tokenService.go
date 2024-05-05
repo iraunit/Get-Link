@@ -5,6 +5,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
+	"time"
 )
 
 type TokenService interface {
@@ -28,6 +29,9 @@ func NewTokenServiceImpl(logger *zap.SugaredLogger) *TokenServiceImpl {
 }
 
 func (impl *TokenServiceImpl) EmailVerificationToken(claims *bean.EmailVerificationClaims) (string, error) {
+	claims.ExpiresAt = &jwt.NumericDate{
+		Time: time.Now().Add(24 * time.Hour),
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte(impl.cfg.JwtKey))
 	return tokenStr, err

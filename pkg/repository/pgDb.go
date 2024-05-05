@@ -34,10 +34,10 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		logger.Fatal("Error creating schema for users", zap.Error(err))
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "user_social_datas" (
-		"email" VARCHAR (64) PRIMARY KEY,
-		"whatsapp" VARCHAR(16),
-		"telegram" VARCHAR(32)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "user_social_data" (
+		"email" VARCHAR (512) PRIMARY KEY,
+		"whatsapp_number" VARCHAR(512),
+		"telegram_username" VARCHAR(512)
 	  );`)
 
 	if err != nil {
