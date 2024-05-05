@@ -40,7 +40,7 @@ func (impl *Impl) AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, re
 	defer impl.lock.Unlock()
 	result, err := impl.db.Model(getLink).Insert()
 	if result.RowsAffected() > 0 {
-		pubSubMessage := bean.PubSubMessage{Message: decryptedData.Message, UUID: decryptedData.UUID, ID: decryptedData.ID, Sender: decryptedData.Sender}
+		pubSubMessage := bean.PubSubMessage{Message: decryptedData.Message, UUID: decryptedData.UUID, ID: getLink.ID, Sender: decryptedData.Sender}
 		pubSubMessageJson, err := json.Marshal(pubSubMessage)
 		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
 		if err != nil {
