@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
@@ -31,7 +32,7 @@ type LinkServiceImpl struct {
 }
 
 func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *map[string]bean.User, repository repository.Repository) *LinkServiceImpl {
-	
+
 	return &LinkServiceImpl{
 		logger:     logger,
 		client:     client,
@@ -51,6 +52,13 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) {
+				if closeErr.Code == websocket.CloseGoingAway {
+					impl.HandleDisconnection(conn, userEmail)
+					break
+				}
+			}
 			impl.logger.Errorw("Error in reading message from Web Sockets", "Error: ", err)
 			impl.HandleDisconnection(conn, userEmail)
 			break

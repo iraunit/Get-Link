@@ -53,7 +53,7 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 			})
 
 			if err != nil {
-				impl.logger.Errorw("Unauthorised Request. Invalid token.")
+				impl.logger.Errorw("Unauthorised Request. Invalid token.", "URL", r.URL.Path, "Error", err)
 				w.WriteHeader(http.StatusBadRequest)
 				_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "Error parsing token."})
 				return
@@ -70,6 +70,11 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 
 func (impl *MiddlewareImpl) LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == util.WhatsappWebhook || r.URL.Path == util.VerifyWhatsappEmail {
+			impl.logger.Infow("req:", "Path:", r.URL.Path, "Method:", r.Method, "UUID:", context.Get(r, "uuid"))
+			next.ServeHTTP(w, r)
+			return
+		}
 		impl.logger.Infow("req:", "Path:", r.URL.Path, "Method:", r.Method, "Email:", context.Get(r, "email"), "UUID:", context.Get(r, "uuid"))
 		next.ServeHTTP(w, r)
 	})
