@@ -5,6 +5,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/gorilla/handlers"
 	"github.com/iraunit/get-link-backend/api/router"
+	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -37,7 +38,7 @@ func (app *App) Start() {
 	app.Logger.Infow(fmt.Sprintf("Starting server on port %s", cfg.Port))
 	app.MuxRouter.GetRouter()
 
-	corsOrigins := handlers.AllowedOrigins([]string{"chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"})
+	corsOrigins := handlers.AllowedOrigins([]string{util.ChromeExtensionUrl})
 	corsHeaders := handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding"})
 	corsMethods := handlers.AllowedMethods([]string{"POST", "DELETE", "GET", "OPTIONS"})
 

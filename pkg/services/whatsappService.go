@@ -57,7 +57,7 @@ func (impl *WhatsappServiceImpl) SendMessage(number string, body string) error {
 			Body: body,
 		},
 	}
-	_, err := impl.restClient.SendWhatsappMessage(fmt.Sprintf(util.WHATSAPP_CLOUD_API_SEND_MESSAGE, impl.cfg.PhoneID), message)
+	_, err := impl.restClient.SendWhatsappMessage(fmt.Sprintf(util.WhatsappCloudApiSendMessage, impl.cfg.PhoneID), message)
 	return err
 }
 
@@ -107,7 +107,7 @@ func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 		impl.logger.Errorw("Error in generating token", "Error", err)
 		return
 	}
-	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s/verifyWhatsapp?token=%s", impl.cfg.Baseurl, url.QueryEscape(token))
+	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s/%s?token=%s", impl.cfg.Baseurl, util.VerifyWhatsappEmail, url.QueryEscape(token))
 	err = impl.mailService.SendMail(emails[0], "Get-Link - Email Verification", emailBody)
 	if err != nil {
 		impl.logger.Errorw("Error in sending mail", "Error", err)

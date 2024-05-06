@@ -27,10 +27,10 @@ type RedisCfg struct {
 }
 
 type PgDbCfg struct {
-	User     string `env:"PG_DB_USER"`
-	Address  string `env:"PG_DB_ADDRESS"`
+	User     string `env:"PG_DB_USER" envDefault:"postgres"`
+	Address  string `env:"PG_DB_ADDRESS" envDefault:"127.0.0.1"`
 	Password string `env:"PG_DB_PASSWORD"`
-	Database string `env:"PG_DB_DATABASE"`
+	Database string `env:"PG_DB_DATABASE" envDefault:"postgres"`
 }
 
 type User struct {

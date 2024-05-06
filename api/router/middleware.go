@@ -5,6 +5,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/context"
+	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
 	"net/http"
@@ -34,17 +35,17 @@ func NewMiddlewareImpl(logger *zap.SugaredLogger) *MiddlewareImpl {
 
 func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/whatsapp" || r.URL.Path == "/verifyWhatsapp" {
-			if r.URL.Path == "/verifyEmail" {
-				context.Set(r, "uuid", "Verify Email")
-			} else if r.URL.Path == "/whatsapp" {
-				context.Set(r, "uuid", "Whatsapp")
+		if r.URL.Path == util.WhatsappWebhook || r.URL.Path == util.VerifyWhatsappEmail {
+			if r.URL.Path == util.VerifyWhatsappEmail {
+				context.Set(r, util.UUID, "Verify Email")
+			} else if r.URL.Path == util.WhatsappWebhook {
+				context.Set(r, util.UUID, util.WHATSAPP)
 			}
 			next.ServeHTTP(w, r)
 			return
 		} else {
 			query := r.URL.Query()
-			tokenStr := query.Get("Authorization")
+			tokenStr := query.Get(util.AUTHORIZATION)
 
 			claims := bean.Claims{}
 			_, err := jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
@@ -58,10 +59,10 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			device := query.Get("device")
-			context.Set(r, "email", claims.Email)
-			context.Set(r, "uuid", claims.UUID)
-			context.Set(r, "device", device)
+			device := query.Get(util.DEVICE)
+			context.Set(r, util.EMAIL, claims.Email)
+			context.Set(r, util.UUID, claims.UUID)
+			context.Set(r, util.DEVICE, device)
 			next.ServeHTTP(w, r)
 		}
 	})
