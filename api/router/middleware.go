@@ -34,7 +34,7 @@ func NewMiddlewareImpl(logger *zap.SugaredLogger) *MiddlewareImpl {
 
 func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/whatsapp" || r.URL.Path == "/verifyEmail" {
+		if r.URL.Path == "/whatsapp" || r.URL.Path == "/verifyWhatsapp" {
 			if r.URL.Path == "/verifyEmail" {
 				context.Set(r, "uuid", "Verify Email")
 			} else if r.URL.Path == "/whatsapp" {

@@ -21,7 +21,7 @@ type Links interface {
 	GetAllLinks(w http.ResponseWriter, r *http.Request)
 	DeleteLinks(w http.ResponseWriter, r *http.Request)
 	AddLink(w http.ResponseWriter, r *http.Request)
-	VerifyWhatsappNumber(w http.ResponseWriter, r *http.Request)
+	VerifyWhatsappEmail(w http.ResponseWriter, r *http.Request)
 }
 
 type LinksImpl struct {
@@ -136,11 +136,11 @@ func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: "Link deleted successfully"})
 }
 
-func (impl *LinksImpl) VerifyWhatsappNumber(w http.ResponseWriter, r *http.Request) {
+func (impl *LinksImpl) VerifyWhatsappEmail(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	tokenStr, _ := url.QueryUnescape(query.Get("token"))
 
-	claims := bean.EmailVerificationClaims{}
+	claims := bean.WhatsappVerificationClaims{}
 	_, err := jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(impl.cfg.JwtKey), nil
 	})

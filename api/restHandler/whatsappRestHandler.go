@@ -75,6 +75,7 @@ func (impl *WhatsappImpl) HandleMessage(w http.ResponseWriter, r *http.Request) 
 		for j := 0; j < len(message.Entry[i].Changes); j++ {
 			currentMessages := message.Entry[i].Changes[j].Value.Messages
 			for k := 0; k < len(currentMessages); k++ {
+				impl.logger.Infow("Message Received", "From", currentMessages[k].From)
 				err = impl.wService.ReceiveMessage(&currentMessages[k])
 				if err != nil {
 					_ = impl.wService.SendMessage(message.Entry[i].Changes[j].Value.Contacts[0].WaID, fmt.Sprintf("Hey %s, Sorry for the inconvenience. Get-Link am unable to process your request. Please try again later. Please share your feedback or report an issue on codingkaro.in \n\nThank you.", message.Entry[i].Changes[j].Value.Contacts[0].Profile.Name))

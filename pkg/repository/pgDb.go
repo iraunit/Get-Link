@@ -34,7 +34,7 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		logger.Fatal("Error creating schema for users", zap.Error(err))
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "whatsapp_email" (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "whatsapp_emails" (
 		"email" VARCHAR (512) PRIMARY KEY,
 		"whatsapp_number" VARCHAR(512)
 	  );`)
@@ -43,7 +43,7 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		logger.Fatal("Error creating schema for whatsapp_email", zap.Error(err))
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "telegram_email" (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "telegram_emails" (
 		"email" VARCHAR (512) PRIMARY KEY,
 		"telegram_username" VARCHAR(512)
 	  );`)

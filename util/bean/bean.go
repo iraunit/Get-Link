@@ -66,10 +66,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-type EmailVerificationClaims struct {
-	Email            string `json:"email,omitempty"`
-	WhatAppNumber    string `json:"whatsapp_number,omitempty"`
-	TelegramUsername string `json:"telegram_username,omitempty"`
+type WhatsappVerificationClaims struct {
+	Email         string `json:"email,omitempty"`
+	WhatAppNumber string `json:"whatsapp_number,omitempty"`
 	jwt.RegisteredClaims
 }
 

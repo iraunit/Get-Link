@@ -101,7 +101,7 @@ func (impl *WhatsappServiceImpl) DownloadMedia(url string) (string, error) {
 func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 	re := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
 	emails := re.FindAllString(message, -1)
-	claims := bean.EmailVerificationClaims{Email: emails[0], WhatAppNumber: number}
+	claims := bean.WhatsappVerificationClaims{Email: emails[0], WhatAppNumber: number}
 	token, err := impl.tokenService.EmailVerificationToken(&claims)
 	if err != nil {
 		impl.logger.Errorw("Error in generating token", "Error", err)
