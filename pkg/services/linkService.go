@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"github.com/caarlos0/env"
 	"github.com/gorilla/websocket"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
@@ -20,7 +19,7 @@ type LinkService interface {
 	AddLink(userEmail string, data *bean.GetLink)
 	GetAllLink(userEmail string, uuid string) *[]bean.GetLink
 	DeleteLink(userEmail string, data *bean.GetLink) error
-	VerifyMail(userEmail string, claims *bean.UserSocialData) error
+	VerifyWhatsapp(userEmail string, claims *bean.WhatsappEmail) error
 }
 
 type LinkServiceImpl struct {
@@ -29,24 +28,16 @@ type LinkServiceImpl struct {
 	lock       *sync.Mutex
 	Users      *map[string]bean.User
 	Repository repository.Repository
-	cfg        bean.EncryptDecryptConfig
 }
 
 func NewLinkServiceImpl(client *redis.Client, logger *zap.SugaredLogger, users *map[string]bean.User, repository repository.Repository) *LinkServiceImpl {
-	cfg := bean.EncryptDecryptConfig{}
-
-	err := env.Parse(&cfg)
-	if err != nil {
-		logger.Errorw("Error in parsing config", "Error: ", err)
-	}
-
+	
 	return &LinkServiceImpl{
 		logger:     logger,
 		client:     client,
 		lock:       &sync.Mutex{},
 		Users:      users,
 		Repository: repository,
-		cfg:        cfg,
 	}
 }
 
@@ -241,29 +232,21 @@ func (impl *LinkServiceImpl) DeleteLink(userEmail string, data *bean.GetLink) er
 	data.Receiver = encryptedEmail
 	return impl.Repository.DeleteLink(data)
 }
-
-func (impl *LinkServiceImpl) VerifyMail(userEmail string, claims *bean.UserSocialData) error {
-	encryptedEmail, err := util.EncryptData(impl.cfg.EncryptionKey, userEmail, impl.logger)
+func (impl *LinkServiceImpl) VerifyWhatsapp(userEmail string, claims *bean.WhatsappEmail) error {
+	sender := claims.WhatAppNumber
+	encryptedEmail, err := util.EncryptData(sender, userEmail, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 		return err
 	}
 	claims.Email = encryptedEmail
 	if claims.WhatAppNumber != "" {
-		encryptedWhatsapp, err := util.EncryptData(impl.cfg.EncryptionKey, claims.WhatAppNumber, impl.logger)
+		encryptedWhatsapp, err := util.EncryptData(sender, claims.WhatAppNumber, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 			return err
 		}
 		claims.WhatAppNumber = encryptedWhatsapp
 	}
-	if claims.TelegramUsername != "" {
-		encryptedTelegram, err := util.EncryptData(impl.cfg.EncryptionKey, claims.TelegramUsername, impl.logger)
-		if err != nil {
-			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
-			return err
-		}
-		claims.TelegramUsername = encryptedTelegram
-	}
-	return impl.Repository.VerifyEmail(claims)
+	return impl.Repository.InsertUpdateWhatsappNumber(claims)
 }

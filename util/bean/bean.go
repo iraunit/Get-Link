@@ -85,10 +85,9 @@ type WhatsAppConfig struct {
 	VerifyToken string `env:"VERIFY_TOKEN"`
 }
 
-type UserSocialData struct {
-	Email            string `sql:"email" json:"email,omitempty"`
-	WhatAppNumber    string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
-	TelegramUsername string `sql:"telegram_username" json:"telegram_username,omitempty"`
+type WhatsappEmail struct {
+	Email         string `sql:"email" json:"email,omitempty"`
+	WhatAppNumber string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
 }
 
 type MailConfig struct {

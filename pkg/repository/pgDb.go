@@ -34,14 +34,22 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		logger.Fatal("Error creating schema for users", zap.Error(err))
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "user_social_data" (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "whatsapp_email" (
 		"email" VARCHAR (512) PRIMARY KEY,
-		"whatsapp_number" VARCHAR(512),
+		"whatsapp_number" VARCHAR(512)
+	  );`)
+
+	if err != nil {
+		logger.Fatal("Error creating schema for whatsapp_email", zap.Error(err))
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "telegram_email" (
+		"email" VARCHAR (512) PRIMARY KEY,
 		"telegram_username" VARCHAR(512)
 	  );`)
 
 	if err != nil {
-		logger.Fatal("Error creating schema for user_social_data", zap.Error(err))
+		logger.Fatal("Error creating schema for telegram_email", zap.Error(err))
 	}
 
 	return db
