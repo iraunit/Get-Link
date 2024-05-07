@@ -27,7 +27,6 @@ type WhatsappServiceImpl struct {
 	restClient   util.RestClient
 	mailService  MailService
 	tokenService TokenService
-	cryptoConfig bean.EncryptDecryptConfig
 	repository   repository.Repository
 	linkService  LinkService
 }
@@ -38,19 +37,12 @@ func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient util.RestClien
 		logger.Fatal("Error loading Cfg from env", "Error", zap.Error(err))
 	}
 
-	cryptoConfig := bean.EncryptDecryptConfig{}
-	err := env.Parse(&cryptoConfig)
-	if err != nil {
-		logger.Fatal("Error in parsing config", "Error: ", err)
-	}
-
 	return &WhatsappServiceImpl{
 		logger:       logger,
 		cfg:          cfg,
 		restClient:   restClient,
 		mailService:  mailService,
 		tokenService: tokenService,
-		cryptoConfig: cryptoConfig,
 		repository:   repository,
 		linkService:  linkService,
 	}
@@ -65,7 +57,7 @@ func (impl *WhatsappServiceImpl) SendMessage(number string, body string) error {
 			Body: body,
 		},
 	}
-	_, err := impl.restClient.SendWhatsappMessage(fmt.Sprintf(util.WHATSAPP_CLOUD_API_SEND_MESSAGE, impl.cfg.PhoneID), message)
+	_, err := impl.restClient.SendWhatsappMessage(fmt.Sprintf(util.WhatsappCloudApiSendMessage, impl.cfg.PhoneID), message)
 	return err
 }
 
@@ -109,13 +101,13 @@ func (impl *WhatsappServiceImpl) DownloadMedia(url string) (string, error) {
 func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 	re := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
 	emails := re.FindAllString(message, -1)
-	claims := bean.EmailVerificationClaims{Email: emails[0], WhatAppNumber: number}
+	claims := bean.WhatsappVerificationClaims{Email: emails[0], WhatAppNumber: number}
 	token, err := impl.tokenService.EmailVerificationToken(&claims)
 	if err != nil {
 		impl.logger.Errorw("Error in generating token", "Error", err)
 		return
 	}
-	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s/verifyEmail?token=%s", impl.cfg.Baseurl, url.QueryEscape(token))
+	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s/%s?token=%s", impl.cfg.Baseurl, util.VerifyWhatsappEmail, url.QueryEscape(token))
 	err = impl.mailService.SendMail(emails[0], "Get-Link - Email Verification", emailBody)
 	if err != nil {
 		impl.logger.Errorw("Error in sending mail", "Error", err)
@@ -126,7 +118,7 @@ func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 }
 
 func (impl *WhatsappServiceImpl) ParseMessageAndBroadcast(message string, sender string) error {
-	encryptedSender, err := util.EncryptData(impl.cryptoConfig.EncryptionKey, sender, impl.logger)
+	encryptedSender, err := util.EncryptData(sender, sender, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encryption", "Error: ", err)
 		return err
@@ -137,7 +129,7 @@ func (impl *WhatsappServiceImpl) ParseMessageAndBroadcast(message string, sender
 		return err
 	}
 	for _, email := range allEmails {
-		decryptedEmail, err := util.DecryptData(impl.cryptoConfig.EncryptionKey, email.Email, impl.logger)
+		decryptedEmail, err := util.DecryptData(sender, email.Email, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
 			return err

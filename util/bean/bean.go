@@ -27,10 +27,10 @@ type RedisCfg struct {
 }
 
 type PgDbCfg struct {
-	User     string `env:"PG_DB_USER"`
-	Address  string `env:"PG_DB_ADDRESS"`
+	User     string `env:"PG_DB_USER" envDefault:"postgres"`
+	Address  string `env:"PG_DB_ADDRESS" envDefault:"127.0.0.1"`
 	Password string `env:"PG_DB_PASSWORD"`
-	Database string `env:"PG_DB_DATABASE"`
+	Database string `env:"PG_DB_DATABASE" envDefault:"postgres"`
 }
 
 type User struct {
@@ -66,10 +66,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-type EmailVerificationClaims struct {
-	Email            string `json:"email,omitempty"`
-	WhatAppNumber    string `json:"whatsapp_number,omitempty"`
-	TelegramUsername string `json:"telegram_username,omitempty"`
+type WhatsappVerificationClaims struct {
+	Email         string `json:"email,omitempty"`
+	WhatAppNumber string `json:"whatsapp_number,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -85,10 +84,9 @@ type WhatsAppConfig struct {
 	VerifyToken string `env:"VERIFY_TOKEN"`
 }
 
-type UserSocialData struct {
-	Email            string `sql:"email" json:"email,omitempty"`
-	WhatAppNumber    string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
-	TelegramUsername string `sql:"telegram_username" json:"telegram_username,omitempty"`
+type WhatsappEmail struct {
+	Email         string `sql:"email" json:"email,omitempty"`
+	WhatAppNumber string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
 }
 
 type MailConfig struct {

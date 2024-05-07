@@ -9,7 +9,7 @@ import (
 )
 
 type TokenService interface {
-	EmailVerificationToken(claims *bean.EmailVerificationClaims) (string, error)
+	EmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error)
 }
 
 type TokenServiceImpl struct {
@@ -28,7 +28,7 @@ func NewTokenServiceImpl(logger *zap.SugaredLogger) *TokenServiceImpl {
 	}
 }
 
-func (impl *TokenServiceImpl) EmailVerificationToken(claims *bean.EmailVerificationClaims) (string, error) {
+func (impl *TokenServiceImpl) EmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error) {
 	claims.ExpiresAt = &jwt.NumericDate{
 		Time: time.Now().Add(24 * time.Hour),
 	}

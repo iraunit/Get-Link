@@ -15,8 +15,8 @@ type Repository interface {
 	AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, receiverMail string)
 	DeleteLink(data *bean.GetLink) error
 	GetAllLink(dst string, uuid string) *[]bean.GetLink
-	VerifyEmail(claims *bean.UserSocialData) error
-	GetEmailsFromNumber(number string) ([]bean.UserSocialData, error)
+	InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error
+	GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error)
 }
 
 type Impl struct {
@@ -84,10 +84,10 @@ func (impl *Impl) GetAllLink(receiver string, uuid string) *[]bean.GetLink {
 	return &result
 }
 
-func (impl *Impl) VerifyEmail(claims *bean.UserSocialData) error {
+func (impl *Impl) InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
-	var prevRecord []bean.UserSocialData
+	var prevRecord []bean.WhatsappEmail
 	err := impl.db.Model(&prevRecord).Where("email = ?", claims.Email).Select()
 	if err != nil {
 		impl.logger.Errorw("Error in verifying link", "Error: ", err)
@@ -108,10 +108,10 @@ func (impl *Impl) VerifyEmail(claims *bean.UserSocialData) error {
 	}
 }
 
-func (impl *Impl) GetEmailsFromNumber(number string) ([]bean.UserSocialData, error) {
+func (impl *Impl) GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error) {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
-	var result []bean.UserSocialData
+	var result []bean.WhatsappEmail
 	err := impl.db.Model(&result).Column("email").Where("whatsapp_number = ?", number).Select()
 	if err != nil {
 		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)

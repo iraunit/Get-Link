@@ -21,7 +21,7 @@ type Links interface {
 	GetAllLinks(w http.ResponseWriter, r *http.Request)
 	DeleteLinks(w http.ResponseWriter, r *http.Request)
 	AddLink(w http.ResponseWriter, r *http.Request)
-	VerifyEmail(w http.ResponseWriter, r *http.Request)
+	VerifyWhatsappEmail(w http.ResponseWriter, r *http.Request)
 }
 
 type LinksImpl struct {
@@ -136,11 +136,11 @@ func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: "Link deleted successfully"})
 }
 
-func (impl *LinksImpl) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+func (impl *LinksImpl) VerifyWhatsappEmail(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	tokenStr, _ := url.QueryUnescape(query.Get("token"))
 
-	claims := bean.EmailVerificationClaims{}
+	claims := bean.WhatsappVerificationClaims{}
 	_, err := jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(impl.cfg.JwtKey), nil
 	})
@@ -152,7 +152,7 @@ func (impl *LinksImpl) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = impl.LinkService.VerifyMail(claims.Email, &bean.UserSocialData{Email: claims.Email, WhatAppNumber: claims.WhatAppNumber, TelegramUsername: claims.TelegramUsername})
+	err = impl.LinkService.VerifyWhatsapp(claims.Email, &bean.WhatsappEmail{Email: claims.Email, WhatAppNumber: claims.WhatAppNumber})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "Error in verifying link"})

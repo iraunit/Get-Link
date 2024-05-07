@@ -26,12 +26,6 @@ func getIV(encryptionKey string) string {
 }
 
 func PKCS5UnPadding(src []byte) []byte {
-	//length := len(src)
-	//unPadding := int(src[length-1])
-	//if unPadding > length {
-	//	return src
-	//}
-	//return src[:(length - unPadding)]
 	if len(src) == 0 {
 		return nil
 	}
