@@ -7,7 +7,6 @@ import (
 	"github.com/iraunit/get-link-backend/api/router"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -25,10 +24,6 @@ func NewApp(logger *zap.SugaredLogger, muxRouter *router.MuxRouter) *App {
 }
 
 func (app *App) Start() {
-	err := godotenv.Load()
-	if err != nil {
-		app.Logger.Errorw("Error loading Env", zap.Error(err))
-	}
 
 	cfg := bean.MainCfg{}
 	if err := env.Parse(&cfg); err != nil {
