@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/go-pg/pg"
@@ -71,19 +70,7 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 			impl.VerifyEmail(message.Text.Body, message.From)
 			_ = impl.SendMessage(message.From, "Thanks for using Get-Link. We have sent you an email for verification. Please verify your email. \n\nYou can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution")
 		} else {
-			err := impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
-			if err != nil {
-				if errors.Is(err, pg.ErrNoRows) {
-					_ = impl.SendMessage(message.From, "Sorry! Please set and verify your email first. Send `set email youremail@gmail.com` here to get started. You can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution")
-				} else {
-					impl.logger.Errorw("Error in processing message", "Error", err)
-					_ = impl.SendMessage(message.From, "Sorry! Something went wrong. Please try again. You can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution")
-				}
-				return err
-			} else {
-				// In case confirmation message is to be send to user.
-				//_ = impl.SendMessage(message.From, "Thanks for using Get-Link. Your request has been processed. You can share your feedback or report an issue on codingkaro.in.")
-			}
+			return impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
 		}
 	} else if message.Type == "image" {
 

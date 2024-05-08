@@ -2,8 +2,10 @@ package restHandler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/caarlos0/env"
+	"github.com/go-pg/pg"
 	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -78,8 +80,12 @@ func (impl *WhatsappImpl) HandleMessage(w http.ResponseWriter, r *http.Request) 
 				impl.logger.Infow("Message Received", "From", currentMessages[k].From)
 				err = impl.wService.ReceiveMessage(&currentMessages[k])
 				if err != nil {
-					_ = impl.wService.SendMessage(message.Entry[i].Changes[j].Value.Contacts[0].WaID, fmt.Sprintf("Hey %s, Sorry for the inconvenience. Get-Link am unable to process your request. Please try again later. Please share your feedback or report an issue on codingkaro.in \n\nThank you.", message.Entry[i].Changes[j].Value.Contacts[0].Profile.Name))
-					impl.logger.Errorw("Error in handling message", "Message:", currentMessages[k], "Error: ", err)
+					if errors.Is(err, pg.ErrNoRows) {
+						_ = impl.wService.SendMessage(message.Entry[i].Changes[j].Value.Contacts[0].WaID, fmt.Sprintf("Hey %s!\nPlease set and verify your email first.\nSend \n> *`set email youremail@gmail.com`*\n here to get started. You can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution", message.Entry[i].Changes[j].Value.Contacts[0].Profile.Name))
+					} else {
+						_ = impl.wService.SendMessage(message.Entry[i].Changes[j].Value.Contacts[0].WaID, fmt.Sprintf("Hey %s,\nSorry for the inconvenience. Get-Link is unable to process your request. Please try again later. Please share your feedback or report an issue on codingkaro.in\n\nRegards\nRaunit Verma\nShypt Solution", message.Entry[i].Changes[j].Value.Contacts[0].Profile.Name))
+						impl.logger.Errorw("Error in handling message", "Message:", currentMessages[k], "Error: ", err)
+					}
 				}
 			}
 		}
