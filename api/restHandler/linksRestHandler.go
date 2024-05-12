@@ -109,6 +109,7 @@ func (impl *LinksImpl) AddLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impl.LinkService.AddLink(userEmail, &data)
+	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: "Link added successfully"})
 }
 
