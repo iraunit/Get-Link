@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 )
 
@@ -109,6 +110,7 @@ func (impl *LinksImpl) AddLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impl.LinkService.AddLink(userEmail, &data)
+	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: "Link added successfully"})
 }
 
@@ -117,10 +119,21 @@ func (impl *LinksImpl) DeleteLinks(w http.ResponseWriter, r *http.Request) {
 	var data bean.GetLink
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
-		impl.logger.Errorw("Error in decoding request body", "Error: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 500, Error: "Error in decoding request body"})
-		return
+		var query = r.URL.Query()
+		if query.Get("id") != "" {
+			data.ID, err = strconv.Atoi(query.Get("id"))
+			if err != nil {
+				impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 500, Error: "Error in decoding request body"})
+				return
+			}
+		} else {
+			impl.logger.Errorw("Error in decoding request body", "Error: ", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 500, Error: "Error in decoding request body"})
+			return
+		}
 	}
 	if data.ID == 0 {
 		w.WriteHeader(http.StatusBadRequest)

@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"github.com/caarlos0/env"
+	"github.com/go-pg/pg"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
@@ -67,16 +68,9 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 		regex := regexp.MustCompile(pattern)
 		if regex.MatchString(strings.ToLower(message.Text.Body)) {
 			impl.VerifyEmail(message.Text.Body, message.From)
-			_ = impl.SendMessage(message.From, "Thanks for using Get-Link. We have sent you an email for verification. Please verify your email. \n\nYou can share your feedback or report an issue on codingkaro.in. \n\nRegards\nRaunit Verma\nShypt Solution")
+			_ = impl.SendMessage(message.From, "Thanks for using Get-Link. We have sent you an email for verification. Please verify your email. \n\nYou can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution")
 		} else {
-			err := impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
-			if err != nil {
-				impl.logger.Errorw("Error in parsing message", "Error", err)
-				_ = impl.SendMessage(message.From, "Sorry! Something went wrong. Please try again. You can share your feedback or report an issue on codingkaro.in.")
-				return err
-			} else {
-				_ = impl.SendMessage(message.From, "Thanks for using Get-Link. Your request has been processed. You can share your feedback or report an issue on codingkaro.in.")
-			}
+			return impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
 		}
 	} else if message.Type == "image" {
 
@@ -127,6 +121,9 @@ func (impl *WhatsappServiceImpl) ParseMessageAndBroadcast(message string, sender
 	if err != nil {
 		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
 		return err
+	}
+	if len(allEmails) == 0 {
+		return pg.ErrNoRows
 	}
 	for _, email := range allEmails {
 		decryptedEmail, err := util.DecryptData(sender, email.Email, impl.logger)
