@@ -56,12 +56,12 @@ func (impl *LinkServiceImpl) ReadMessages(conn *websocket.Conn, userEmail string
 			if errors.As(err, &closeErr) {
 				if closeErr.Code == websocket.CloseGoingAway {
 					impl.HandleDisconnection(conn, userEmail)
-					break
+					return
 				}
 			}
 			impl.logger.Errorw("Error in reading message from Web Sockets", "Error: ", err)
 			impl.HandleDisconnection(conn, userEmail)
-			break
+			return
 		}
 		ctx := context.Background()
 		encryptedMsg, err := util.EncryptData(userEmail, string(message), impl.logger)
@@ -101,7 +101,8 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 		if err != nil {
 			impl.logger.Errorw("Error in receiving message from pubSub", "Error: ", err)
 			_ = conn.WriteMessage(websocket.TextMessage, []byte("Error in receiving message from Database. Try again."))
-			continue
+			impl.HandleDisconnection(conn, userEmail)
+			return
 		}
 		decryptedMsg, err := util.DecryptData(userEmail, msg.Payload, impl.logger)
 		if err != nil {
@@ -113,7 +114,7 @@ func (impl *LinkServiceImpl) WriteMessages(conn *websocket.Conn, userEmail strin
 			impl.logger.Errorw("Error in writing message to Web Sockets", "Error: ", err)
 			_ = pubSub.Close()
 			impl.HandleDisconnection(conn, userEmail)
-			break
+			return
 		}
 
 		err = impl.client.Del(ctx, msg.Channel).Err()
