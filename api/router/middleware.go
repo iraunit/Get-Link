@@ -53,7 +53,9 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 			})
 
 			if err != nil {
-				impl.logger.Errorw("Unauthorised Request. Invalid token.", "URL", r.URL.Path, "Error", err)
+				if tokenStr != "undefined" {
+					impl.logger.Errorw("Unauthorised Request. Invalid token.", "URL", r.URL.Path, "Error", err)
+				}
 				w.WriteHeader(http.StatusBadRequest)
 				_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "Error parsing token."})
 				return

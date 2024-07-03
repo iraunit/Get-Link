@@ -1,10 +1,11 @@
 package util
 
 const (
-	PRODUCTION                  = "production"
-	DEVELOPMENT                 = "development"
-	WhatsappCloudApiSendMessage = `https://graph.facebook.com/v19.0/%s/messages`
-	ChromeExtensionUrl          = "chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"
+	PRODUCTION                      = "production"
+	DEVELOPMENT                     = "development"
+	WhatsappCloudApiSendMessage     = `https://graph.facebook.com/v19.0/%s/messages`
+	WhatsappCloudApiGetMediaDataUrl = `https://graph.facebook.com/v20.0/%s`
+	ChromeExtensionUrl              = "chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"
 )
 
 // routes

@@ -16,8 +16,6 @@ import (
 type WhatsappService interface {
 	SendMessage(number string, body string) error
 	ReceiveMessage(message *bean.WhatsAppBusinessMessageData) error
-	GetMediaLink(id string) (string, error)
-	DownloadMedia(url string) (string, error)
 	VerifyEmail(message string, sender string)
 	ParseMessageAndBroadcast(message string, sender string) error
 }
@@ -82,14 +80,30 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 	return nil
 }
 
-func (impl *WhatsappServiceImpl) GetMediaLink(id string) (string, error) {
+func (impl *WhatsappServiceImpl) getMediaData(id string) (string, error) {
+
+	mediaData, err := impl.restClient.GetMediaDataFromId(fmt.Sprintf(util.WhatsappCloudApiGetMediaDataUrl, id))
+
+	if err != nil {
+		impl.logger.Errorw("Error in getting whatsapp media data", "Error", err)
+		return "", err
+	}
+
+	if mediaData != nil {
+		return mediaData.Url, nil
+	}
 
 	return "", nil
 }
 
-func (impl *WhatsappServiceImpl) DownloadMedia(url string) (string, error) {
+func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, userEmail string) error {
 
-	return "", nil
+	fileExtension, err := util.GetFileExtension(mimeType)
+	if err != nil {
+		impl.logger.Errorw("Error in getting file extension", "Error", err)
+		return err
+	}
+
 }
 
 func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
