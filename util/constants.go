@@ -6,6 +6,7 @@ const (
 	WhatsappCloudApiSendMessage     = `https://graph.facebook.com/v19.0/%s/messages`
 	WhatsappCloudApiGetMediaDataUrl = `https://graph.facebook.com/v20.0/%s`
 	ChromeExtensionUrl              = "chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"
+	PathToFiles                     = "/tmp/data/%s/%s"
 )
 
 // routes
@@ -21,4 +22,6 @@ const (
 	DEVICE        = "device"
 	AUTHORIZATION = "Authorization"
 	WHATSAPP      = "whatsapp"
+	TELEGRAM      = "telegram"
+	GETLINK       = "getlink"
 )

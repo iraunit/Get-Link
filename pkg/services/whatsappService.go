@@ -1,9 +1,11 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/go-pg/pg"
+	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
@@ -28,9 +30,10 @@ type WhatsappServiceImpl struct {
 	tokenService TokenService
 	repository   repository.Repository
 	linkService  LinkService
+	fileManager  fileManager.FileManager
 }
 
-func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient util.RestClient, mailService MailService, tokenService TokenService, repository repository.Repository, linkService LinkService) *WhatsappServiceImpl {
+func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient util.RestClient, mailService MailService, tokenService TokenService, repository repository.Repository, linkService LinkService, fileManager fileManager.FileManager) *WhatsappServiceImpl {
 	cfg := bean.WhatsAppConfig{}
 	if err := env.Parse(&cfg); err != nil {
 		logger.Fatal("Error loading Cfg from env", "Error", zap.Error(err))
@@ -44,6 +47,7 @@ func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient util.RestClien
 		tokenService: tokenService,
 		repository:   repository,
 		linkService:  linkService,
+		fileManager:  fileManager,
 	}
 }
 
@@ -93,7 +97,7 @@ func (impl *WhatsappServiceImpl) getMediaData(id string) (string, error) {
 		return mediaData.Url, nil
 	}
 
-	return "", nil
+	return "", errors.New("media data not found")
 }
 
 func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, userEmail string) error {
@@ -104,6 +108,27 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, userEmail string) 
 		return err
 	}
 
+	folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(userEmail)
+	impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
+	folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
+	if err != nil {
+		impl.logger.Errorw("Error in getting folder size", "Error", err)
+		return err
+	}
+
+	if folderSize > 100 {
+		impl.fileManager.DeleteAllFileFromPath(folderPath)
+	}
+
+	fileName := "." + fileExtension
+
+	err = impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, fmt.Sprintf("%s/%s", folderPath, fileName))
+	if err != nil {
+		impl.logger.Errorw("Error in downloading whatsapp media", "Error", err)
+		return err
+	}
+
+	return nil
 }
 
 func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {

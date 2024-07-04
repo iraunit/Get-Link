@@ -15,6 +15,7 @@ import (
 type RestClient interface {
 	SendWhatsappMessage(url string, body interface{}) (string, error)
 	GetMediaDataFromId(url string) (*bean.WhatsappMedia, error)
+	DownloadMediaFromUrl(url string, token string, filePath string) error
 }
 
 type RestClientImpl struct {
@@ -79,7 +80,7 @@ func (impl *RestClientImpl) GetMediaDataFromId(url string) (*bean.WhatsappMedia,
 	return &media, nil
 }
 
-func (impl *RestClientImpl) DownloadMediaFromUrl(url, token, filePath string) error {
+func (impl *RestClientImpl) DownloadMediaFromUrl(url string, token string, filePath string) error {
 	client := resty.New()
 
 	resp, err := client.R().SetHeader("Authorization", "Bearer "+token).Get(url)
