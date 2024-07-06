@@ -2,10 +2,16 @@ package fileManager
 
 import (
 	"fmt"
+	"github.com/iraunit/get-link-backend/pkg/cryptography"
 	"github.com/iraunit/get-link-backend/util"
+	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -18,6 +24,8 @@ type FileManager interface {
 	DeleteAllFileFromPath(path string)
 	GetSizeOfADirectory(path string) (int64, error)
 	DownloadDecryptedFile(w http.ResponseWriter, encryptedFilePath, email string) error
+	ListAllFilesFromApp(userEmail, appName string) ([]bean.FileInfo, error)
+	SaveFileToPath(data io.ReadCloser, path, userEmail string) error
 }
 
 type FileManagerImpl struct {
@@ -124,18 +132,90 @@ func (impl *FileManagerImpl) DownloadDecryptedFile(w http.ResponseWriter, encryp
 		return err
 	}
 
-	key, err := util.CreateKey(email)
+	key, err := cryptography.CreateKey(email)
 	if err != nil {
 		impl.logger.Errorw("Error creating decryption key", "Error", err)
 		return err
 	}
 
-	err = util.DecryptFileAndSend(w, key, encryptedData, impl.logger)
+	fileName := path.Base(encryptedFilePath)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename="+strings.TrimPrefix(fileName, ".bin"))
+
+	mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimPrefix(fileName, ".bin"), ".")[len(strings.Split(fileName, "."))-2]))
+	if err != nil {
+		impl.logger.Errorw("Error in getting mime type", "Error", err)
+	} else {
+		w.Header().Set("Content-Type", mimeType)
+	}
+
+	err = cryptography.DecryptFileAndSend(w, key, encryptedData, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error decrypting data", "Error", err)
 		return err
 	}
 
 	impl.logger.Infow("File successfully decrypted and sent")
+	return nil
+}
+
+func (impl *FileManagerImpl) ListAllFilesFromApp(userEmail, appName string) ([]bean.FileInfo, error) {
+	var allFiles []bean.FileInfo
+	folderPath := fmt.Sprintf(util.PathToFiles, userEmail, appName)
+	files, err := os.ReadDir(folderPath)
+	if err != nil {
+		impl.logger.Errorw("Error in reading directory", "Error", err)
+		return nil, err
+	}
+
+	for _, file := range files {
+		info, err := file.Info()
+		if err != nil {
+			impl.logger.Errorw("Error in getting file info", "Error", err)
+			continue
+		}
+		mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimPrefix(file.Name(), ".bin"), ".")[len(strings.Split(file.Name(), "."))-2]))
+		if err != nil {
+			impl.logger.Errorw("Error in getting mime type", "Error", err)
+			continue
+		}
+		allFiles = append(allFiles, bean.FileInfo{Name: info.Name(), Size: info.Size(), ModTime: info.ModTime(), MimeType: mimeType, AppName: appName})
+	}
+	return allFiles, nil
+}
+
+func (impl *FileManagerImpl) SaveFileToPath(data io.ReadCloser, path, userEmail string) error {
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		impl.logger.Errorw("Error in creating directories", "Error", err)
+		return err
+	}
+
+	out, err := os.Create(path)
+	if err != nil {
+		impl.logger.Errorw("Error in creating file", "Error", err)
+		return err
+	}
+
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+			impl.logger.Errorw("Error in closing file", "Error", err)
+			return
+		}
+	}(out)
+
+	key, err := cryptography.CreateKey(userEmail)
+	if err != nil {
+		impl.logger.Errorw("Error creating encryption key", "Error", err)
+		return err
+	}
+
+	err = cryptography.EncryptDataAndSaveToFile(out, key, data, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error encrypting and saving to file", "Error", err)
+		return err
+	}
 	return nil
 }

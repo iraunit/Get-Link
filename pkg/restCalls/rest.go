@@ -1,4 +1,4 @@
-package util
+package restCalls
 
 import (
 	"encoding/json"
@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/go-resty/resty/v2"
+	"github.com/iraunit/get-link-backend/pkg/fileManager"
+	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
 	"net/http"
-	"os"
 )
 
 type RestClient interface {
@@ -19,20 +20,22 @@ type RestClient interface {
 }
 
 type RestClientImpl struct {
-	logger *zap.SugaredLogger
-	cfg    bean.WhatsAppConfig
-	async  *Async
+	logger      *zap.SugaredLogger
+	cfg         bean.WhatsAppConfig
+	async       *util.Async
+	fileManager fileManager.FileManager
 }
 
-func NewRestClientImpl(logger *zap.SugaredLogger, async *Async) *RestClientImpl {
+func NewRestClientImpl(logger *zap.SugaredLogger, async *util.Async, fileManager fileManager.FileManager) *RestClientImpl {
 	cfg := bean.WhatsAppConfig{}
 	if err := env.Parse(&cfg); err != nil {
 		logger.Fatal("Error in parsing config", "Error", err)
 	}
 	return &RestClientImpl{
-		logger: logger,
-		cfg:    cfg,
-		async:  async,
+		logger:      logger,
+		cfg:         cfg,
+		async:       async,
+		fileManager: fileManager,
 	}
 }
 
@@ -90,31 +93,7 @@ func (impl *RestClientImpl) DownloadMediaFromUrl(url, token, filePath, userEmail
 			return
 		}
 
-		out, err := os.Create(filePath)
-		if err != nil {
-			impl.logger.Errorw("Error in creating file", "Error", err)
-			return
-		}
-
-		defer func(out *os.File) {
-			err := out.Close()
-			if err != nil {
-				impl.logger.Errorw("Error in closing file", "Error", err)
-				return
-			}
-		}(out)
-
-		key, err := CreateKey(userEmail)
-		if err != nil {
-			impl.logger.Errorw("Error creating encryption key", "Error", err)
-			return
-		}
-
-		err = EncryptDataAndSaveToFile(out, key, resp.Body(), impl.logger)
-		if err != nil {
-			impl.logger.Errorw("Error encrypting and saving to file", "Error", err)
-			return
-		}
+		_ = impl.fileManager.SaveFileToPath(resp.RawBody(), filePath, userEmail)
 	})
 
 }

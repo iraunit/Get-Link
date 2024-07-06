@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"mime"
+	"time"
 )
 
 func GetFileExtension(mimeType string) (string, error) {
@@ -17,6 +18,14 @@ func GetFileExtension(mimeType string) (string, error) {
 	return extensions[0], nil
 }
 
+func GetMimeTypeFromExtension(extension string) (string, error) {
+	mimeType := mime.TypeByExtension(extension)
+	if mimeType == "" {
+		return "", fmt.Errorf("no MIME type found for extension %s", extension)
+	}
+	return mimeType, nil
+}
+
 func EncodeString(input string) string {
 	return base64.URLEncoding.EncodeToString([]byte(input))
 }
@@ -27,4 +36,9 @@ func DecodeString(input string) (string, error) {
 		return "", err
 	}
 	return string(decodedBytes), nil
+}
+
+func GetFileNameFromType(fileType, mimeType string) string {
+	extension, _ := GetFileExtension(mimeType)
+	return fmt.Sprintf("%s_%s_%s", fileType, time.Now().UTC().Format(time.RFC822), extension)
 }

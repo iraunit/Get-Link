@@ -1,4 +1,4 @@
-package util
+package cryptography
 
 import (
 	"bytes"
@@ -101,7 +101,7 @@ func DecryptData(encryptionKey string, encryptedString string, logger *zap.Sugar
 	return string(decryptedText), nil
 }
 
-func EncryptDataAndSaveToFile(w io.Writer, key []byte, data []byte, logger *zap.SugaredLogger) error {
+func EncryptDataAndSaveToFile(w io.Writer, key []byte, data io.ReadCloser, logger *zap.SugaredLogger) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		logger.Errorw("Error creating cipher block", "Error", err)
@@ -120,12 +120,18 @@ func EncryptDataAndSaveToFile(w io.Writer, key []byte, data []byte, logger *zap.
 	}
 
 	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(data, data)
+	writer := &cipher.StreamWriter{S: stream, W: w}
 
-	if _, err := w.Write(data); err != nil {
+	if _, err := io.Copy(writer, data); err != nil {
 		logger.Errorw("Error writing encrypted data to file", "Error", err)
 		return err
 	}
+	//stream.XORKeyStream(data, data)
+	//
+	//if _, err := w.Write(data); err != nil {
+	//	logger.Errorw("Error writing encrypted data to file", "Error", err)
+	//	return err
+	//}
 
 	return nil
 }

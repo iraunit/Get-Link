@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-pg/pg"
-	"github.com/iraunit/get-link-backend/util"
+	"github.com/iraunit/get-link-backend/pkg/cryptography"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -43,7 +43,7 @@ func (impl *Impl) AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, re
 	if result.RowsAffected() > 0 {
 		pubSubMessage := bean.PubSubMessage{Message: decryptedData.Message, UUID: decryptedData.UUID, ID: getLink.ID, Sender: decryptedData.Sender}
 		pubSubMessageJson, err := json.Marshal(pubSubMessage)
-		encryptedJson, err := util.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
+		encryptedJson, err := cryptography.EncryptData(receiverMail, string(pubSubMessageJson), impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting json", "Error: ", err)
 			return

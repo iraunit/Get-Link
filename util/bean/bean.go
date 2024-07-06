@@ -4,6 +4,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"sync"
+	"time"
 )
 
 type MainCfg struct {
@@ -100,4 +101,12 @@ type MailConfig struct {
 type EncryptDecryptConfig struct {
 	EncryptionKey string `env:"ENCRYPTION_KEY" envDefault:"secret"`
 	DecryptionKey string `env:"DECRYPTION_KEY" envDefault:"secret"`
+}
+
+type FileInfo struct {
+	Name     string    `json:"name"`
+	Size     int64     `json:"size"`
+	ModTime  time.Time `json:"mod_time"`
+	MimeType string    `json:"mime_type"`
+	AppName  string    `json:"app_name,omitempty"`
 }

@@ -65,6 +65,7 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 			context.Set(r, util.EMAIL, claims.Email)
 			context.Set(r, util.UUID, claims.UUID)
 			context.Set(r, util.DEVICE, device)
+			w.Header().Set("Content-Type", "application/json")
 			next.ServeHTTP(w, r)
 		}
 	})
