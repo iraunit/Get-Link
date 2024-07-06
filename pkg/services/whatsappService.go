@@ -126,7 +126,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
 			return err
 		}
-		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(decryptedEmail))
+		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(email.Email))
 		impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
 		folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
 		if err != nil {

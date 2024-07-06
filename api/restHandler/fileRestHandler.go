@@ -5,6 +5,7 @@ import (
 	"fmt"
 	muxContext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/iraunit/get-link-backend/pkg/cryptography"
 	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
@@ -55,8 +56,15 @@ func (impl *FileHandlerImpl) DownloadFile(w http.ResponseWriter, r *http.Request
 
 func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) {
 	email := muxContext.Get(r, "email").(string)
+	encryptedEmail, err := cryptography.EncryptData(email, email, impl.logger)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
+		impl.logger.Errorw("Error in uploading file", "Error", err)
+		return
+	}
 
-	err := r.ParseMultipartForm(32 << 20)
+	err = r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
 		return
@@ -76,7 +84,7 @@ func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) 
 
 	filename := header.Filename
 
-	err = impl.fileManager.SaveFileToPath(r.Body, fmt.Sprintf("%s/%s.bin", impl.fileManager.GetPathToSaveFileFromApp(util.EncodeString(email), util.GETLINK), filename), email)
+	err = impl.fileManager.SaveFileToPath(r.Body, fmt.Sprintf("%s/%s.bin", impl.fileManager.GetPathToSaveFileFromApp(util.EncodeString(encryptedEmail), util.GETLINK), filename), email)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
@@ -89,11 +97,19 @@ func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) 
 
 func (impl *FileHandlerImpl) ListAllFiles(w http.ResponseWriter, r *http.Request) {
 	email := muxContext.Get(r, "email").(string)
+	encryptedEmail, err := cryptography.EncryptData(email, email, impl.logger)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
+		impl.logger.Errorw("Error in uploading file", "Error", err)
+		return
+	}
+
 	var allFiles []bean.FileInfo
 	appNames := []string{util.WHATSAPP, util.GETLINK, util.TELEGRAM}
 
 	for _, appName := range appNames {
-		files, err := impl.fileManager.ListAllFilesFromApp(util.EncodeString(email), appName)
+		files, err := impl.fileManager.ListAllFilesFromApp(util.EncodeString(encryptedEmail), appName)
 		if err != nil {
 			impl.logger.Errorw("Error in listing file", "appName", appName, "email", email, "Error", err)
 			continue
