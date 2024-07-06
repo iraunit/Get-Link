@@ -12,6 +12,7 @@ import (
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -126,7 +127,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
 			return err
 		}
-		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(email.Email))
+		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(decryptedEmail))
 		impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
 		folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
 		if err != nil {
@@ -144,7 +145,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 
 		fileName += fileExtension + ".bin"
 
-		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, fmt.Sprintf("%s/%s", folderPath, fileName), decryptedEmail)
+		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, path.Join(folderPath, fileName), decryptedEmail)
 	}
 
 	return nil

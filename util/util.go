@@ -39,6 +39,5 @@ func DecodeString(input string) (string, error) {
 }
 
 func GetFileNameFromType(fileType, mimeType string) string {
-	extension, _ := GetFileExtension(mimeType)
-	return fmt.Sprintf("%s_%s_%s", fileType, time.Now().UTC().Format(time.RFC822), extension)
+	return fmt.Sprintf("%s_%s_From-Get-Link", fileType, time.Now().UTC().Format(time.RFC822))
 }
