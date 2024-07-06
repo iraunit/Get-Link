@@ -1,12 +1,15 @@
-package util
+package cryptography
 
 import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/argon2"
+	"io"
 )
 
 func getEncryptionKey(encryptionKey string) string {
@@ -96,4 +99,70 @@ func DecryptData(encryptionKey string, encryptedString string, logger *zap.Sugar
 	decryptedText := PKCS5UnPadding(cipherText)
 
 	return string(decryptedText), nil
+}
+
+func EncryptDataAndSaveToFile(w io.Writer, key []byte, data io.ReadCloser, logger *zap.SugaredLogger) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		logger.Errorw("Error creating cipher block", "Error", err)
+		return err
+	}
+
+	iv := make([]byte, aes.BlockSize)
+	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+		logger.Errorw("Error generating IV", "Error", err)
+		return err
+	}
+
+	if _, err := w.Write(iv); err != nil {
+		logger.Errorw("Error writing IV to file", "Error", err)
+		return err
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	writer := &cipher.StreamWriter{S: stream, W: w}
+
+	if _, err := io.Copy(writer, data); err != nil {
+		logger.Errorw("Error writing encrypted data to file", "Error", err)
+		return err
+	}
+	//stream.XORKeyStream(data, data)
+	//
+	//if _, err := w.Write(data); err != nil {
+	//	logger.Errorw("Error writing encrypted data to file", "Error", err)
+	//	return err
+	//}
+
+	return nil
+}
+
+func CreateKey(email string) ([]byte, error) {
+	salt := []byte(email)
+	key := argon2.IDKey([]byte(email), salt, 1, 64*1024, 4, 32)
+	return key, nil
+}
+
+func DecryptFileAndSend(w io.Writer, key []byte, data []byte, logger *zap.SugaredLogger) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		logger.Errorw("Error creating cipher block", "Error", err)
+		return err
+	}
+
+	if len(data) < aes.BlockSize {
+		return fmt.Errorf("ciphertext too short")
+	}
+
+	iv := data[:aes.BlockSize]
+	data = data[aes.BlockSize:]
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(data, data)
+
+	if _, err := w.Write(data); err != nil {
+		logger.Errorw("Error writing decrypted data to file", "Error", err)
+		return err
+	}
+
+	return nil
 }

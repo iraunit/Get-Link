@@ -9,7 +9,9 @@ package main
 import (
 	"github.com/iraunit/get-link-backend/api/restHandler"
 	"github.com/iraunit/get-link-backend/api/router"
+	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/pkg/repository"
+	"github.com/iraunit/get-link-backend/pkg/restCalls"
 	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util"
 )
@@ -25,12 +27,15 @@ func InitializeApp() *App {
 	impl := repository.NewRepositoryImpl(db, sugaredLogger, client)
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
-	restClientImpl := util.NewRestClientImpl(sugaredLogger)
+	async := util.NewAsync(sugaredLogger)
+	fileManagerImpl := fileManager.NewFileManagerImpl(sugaredLogger, async)
+	restClientImpl := restCalls.NewRestClientImpl(sugaredLogger, async, fileManagerImpl)
 	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
 	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
-	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl)
+	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl, fileManagerImpl)
 	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
-	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl)
+	fileHandlerImpl := restHandler.NewFileHandlerImpl(sugaredLogger, fileManagerImpl)
+	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl, fileHandlerImpl)
 	app := NewApp(sugaredLogger, muxRouter)
 	return app
 }

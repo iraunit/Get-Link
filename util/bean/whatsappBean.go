@@ -76,3 +76,12 @@ type WhatsAppBusinessSendTextMessage struct {
 	Type             string                   `json:"type"`
 	Text             WhatsAppBusinessTextData `json:"text"`
 }
+
+type WhatsappMedia struct {
+	Url              string `json:"url"`
+	MimeType         string `json:"mime_type"`
+	SHA256           string `json:"sha256"`
+	FileSize         int64  `json:"file_size"`
+	Id               string `json:"id"`
+	MessagingProduct string `json:"messaging_product"`
+}
