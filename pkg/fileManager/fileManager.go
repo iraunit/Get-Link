@@ -78,7 +78,20 @@ func (impl *FileManagerImpl) DeleteFileFromPath(path string) {
 	}
 }
 
+func EnsureDirectory(path string) error {
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+	return nil
+}
+
 func (impl *FileManagerImpl) GetSizeOfADirectory(path string) (int64, error) {
+	err := EnsureDirectory(path)
+	if err != nil {
+		return 0, err
+	}
+
 	d, err := os.Open(path)
 	if err != nil {
 		return 0, err

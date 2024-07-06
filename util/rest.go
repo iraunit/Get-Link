@@ -15,25 +15,24 @@ import (
 type RestClient interface {
 	SendWhatsappMessage(url string, body interface{}) (string, error)
 	GetMediaDataFromId(url string) (*bean.WhatsappMedia, error)
-	DownloadMediaFromUrl(url string, token string, filePath string) error
+	DownloadMediaFromUrl(url string, token string, filePath string, userEmail string)
 }
 
 type RestClientImpl struct {
 	logger *zap.SugaredLogger
 	cfg    bean.WhatsAppConfig
+	async  *Async
 }
 
-func NewRestClientImpl(logger *zap.SugaredLogger) *RestClientImpl {
+func NewRestClientImpl(logger *zap.SugaredLogger, async *Async) *RestClientImpl {
 	cfg := bean.WhatsAppConfig{}
 	if err := env.Parse(&cfg); err != nil {
-		return &RestClientImpl{
-			logger: logger,
-			cfg:    cfg,
-		}
+		logger.Fatal("Error in parsing config", "Error", err)
 	}
 	return &RestClientImpl{
 		logger: logger,
 		cfg:    cfg,
+		async:  async,
 	}
 }
 
@@ -80,34 +79,42 @@ func (impl *RestClientImpl) GetMediaDataFromId(url string) (*bean.WhatsappMedia,
 	return &media, nil
 }
 
-func (impl *RestClientImpl) DownloadMediaFromUrl(url string, token string, filePath string) error {
-	client := resty.New()
+func (impl *RestClientImpl) DownloadMediaFromUrl(url, token, filePath, userEmail string) {
 
-	resp, err := client.R().SetHeader("Authorization", "Bearer "+token).Get(url)
-	if err != nil {
-		impl.logger.Errorw("Error in downloading whatsapp media", "Error", err)
-		return err
-	}
+	impl.async.Run(func() {
+		client := resty.New()
 
-	out, err := os.Create(filePath)
-	if err != nil {
-		impl.logger.Errorw("Error in creating file", "Error", err)
-		return err
-	}
-
-	defer func(out *os.File) {
-		err := out.Close()
+		resp, err := client.R().SetHeader("Authorization", "Bearer "+token).Get(url)
 		if err != nil {
-			impl.logger.Errorw("Error in closing file", "Error", err)
+			impl.logger.Errorw("Error in downloading whatsapp media", "Error", err)
 			return
 		}
-	}(out)
 
-	_, err = out.Write(resp.Body())
-	if err != nil {
-		impl.logger.Errorw("Error in writing to file", "Error", err)
-		return err
-	}
+		out, err := os.Create(filePath)
+		if err != nil {
+			impl.logger.Errorw("Error in creating file", "Error", err)
+			return
+		}
 
-	return nil
+		defer func(out *os.File) {
+			err := out.Close()
+			if err != nil {
+				impl.logger.Errorw("Error in closing file", "Error", err)
+				return
+			}
+		}(out)
+
+		key, err := CreateKey(userEmail)
+		if err != nil {
+			impl.logger.Errorw("Error creating encryption key", "Error", err)
+			return
+		}
+
+		err = EncryptDataAndSaveToFile(out, key, resp.Body(), impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error encrypting and saving to file", "Error", err)
+			return
+		}
+	})
+
 }

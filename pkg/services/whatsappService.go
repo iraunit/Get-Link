@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/go-pg/pg"
@@ -75,7 +74,16 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 			return impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
 		}
 	} else if message.Type == "image" {
-
+		id := message.Image.ID
+		data, err := impl.getMediaData(id)
+		if err != nil {
+			return err
+		}
+		err = impl.downloadMedia(data.Url, data.MimeType, message.From, "data.FileName")
+		if err != nil {
+			impl.logger.Errorw("Error in downloading media", "Error", err)
+			return err
+		}
 	} else if message.Type == "document" {
 
 	} else if message.Type == "video" {
@@ -84,23 +92,19 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 	return nil
 }
 
-func (impl *WhatsappServiceImpl) getMediaData(id string) (string, error) {
+func (impl *WhatsappServiceImpl) getMediaData(id string) (*bean.WhatsappMedia, error) {
 
 	mediaData, err := impl.restClient.GetMediaDataFromId(fmt.Sprintf(util.WhatsappCloudApiGetMediaDataUrl, id))
 
 	if err != nil {
 		impl.logger.Errorw("Error in getting whatsapp media data", "Error", err)
-		return "", err
+		return nil, err
 	}
 
-	if mediaData != nil {
-		return mediaData.Url, nil
-	}
-
-	return "", errors.New("media data not found")
+	return mediaData, nil
 }
 
-func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, userEmail string) error {
+func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName string) error {
 
 	fileExtension, err := util.GetFileExtension(mimeType)
 	if err != nil {
@@ -108,24 +112,37 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, userEmail string) 
 		return err
 	}
 
-	folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(userEmail)
-	impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
-	folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
+	allEmails, err := impl.GetUsersFromWhatsappNumber(sender)
 	if err != nil {
-		impl.logger.Errorw("Error in getting folder size", "Error", err)
+		impl.logger.Errorw("Error in getting user from whatsapp number", "Error", err)
 		return err
 	}
 
-	if folderSize > 100 {
-		impl.fileManager.DeleteAllFileFromPath(folderPath)
-	}
+	for _, email := range allEmails {
+		decryptedEmail, err := util.DecryptData(sender, email.Email, impl.logger)
+		if err != nil {
+			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
+			return err
+		}
+		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(email.Email))
+		impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
+		folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
+		if err != nil {
+			impl.logger.Errorw("Error in getting folder size", "Error", err)
+			return err
+		}
+		maxLimit := util.FreeWhatsappFileLimitSizeMB
+		if impl.repository.IsUserPremiumUser(decryptedEmail) {
+			maxLimit = util.PremiumWhatsappFileLimitSizeMB
+		}
 
-	fileName := "." + fileExtension
+		if folderSize > int64(maxLimit) {
+			impl.fileManager.DeleteAllFileFromPath(folderPath)
+		}
 
-	err = impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, fmt.Sprintf("%s/%s", folderPath, fileName))
-	if err != nil {
-		impl.logger.Errorw("Error in downloading whatsapp media", "Error", err)
-		return err
+		fileName += "." + fileExtension + ".bin"
+
+		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, fmt.Sprintf("%s/%s", folderPath, fileName), decryptedEmail)
 	}
 
 	return nil
@@ -151,18 +168,10 @@ func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 }
 
 func (impl *WhatsappServiceImpl) ParseMessageAndBroadcast(message string, sender string) error {
-	encryptedSender, err := util.EncryptData(sender, sender, impl.logger)
+	allEmails, err := impl.GetUsersFromWhatsappNumber(sender)
 	if err != nil {
-		impl.logger.Errorw("Error in encryption", "Error: ", err)
+		impl.logger.Errorw("Error in getting user from whatsapp number", "Error: ", err)
 		return err
-	}
-	allEmails, err := impl.repository.GetEmailsFromNumber(encryptedSender)
-	if err != nil {
-		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
-		return err
-	}
-	if len(allEmails) == 0 {
-		return pg.ErrNoRows
 	}
 	for _, email := range allEmails {
 		decryptedEmail, err := util.DecryptData(sender, email.Email, impl.logger)
@@ -173,4 +182,21 @@ func (impl *WhatsappServiceImpl) ParseMessageAndBroadcast(message string, sender
 		impl.linkService.AddLink(decryptedEmail, &bean.GetLink{Receiver: decryptedEmail, Sender: decryptedEmail, Message: message, UUID: "whatsapp"})
 	}
 	return nil
+}
+
+func (impl *WhatsappServiceImpl) GetUsersFromWhatsappNumber(sender string) ([]bean.WhatsappEmail, error) {
+	encryptedSender, err := util.EncryptData(sender, sender, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encryption", "Error: ", err)
+		return nil, err
+	}
+	allEmails, err := impl.repository.GetEmailsFromNumber(encryptedSender)
+	if err != nil {
+		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
+		return nil, err
+	}
+	if len(allEmails) == 0 {
+		return nil, pg.ErrNoRows
+	}
+	return allEmails, nil
 }

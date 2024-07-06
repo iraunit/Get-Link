@@ -7,6 +7,7 @@ import (
 	"github.com/google/wire"
 	"github.com/iraunit/get-link-backend/api/restHandler"
 	"github.com/iraunit/get-link-backend/api/router"
+	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util"
@@ -29,6 +30,8 @@ func InitializeApp() *App {
 		util.NewRestClientImpl, wire.Bind(new(util.RestClient), new(*util.RestClientImpl)),
 		services.NewTokenServiceImpl, wire.Bind(new(services.TokenService), new(*services.TokenServiceImpl)),
 		services.NewMailServiceImpl, wire.Bind(new(services.MailService), new(*services.MailServiceImpl)),
+		fileManager.NewFileManagerImpl, wire.Bind(new(fileManager.FileManager), new(*fileManager.FileManagerImpl)),
+		util.NewAsync,
 	)
 	return &App{}
 }

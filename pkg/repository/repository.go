@@ -17,6 +17,7 @@ type Repository interface {
 	GetAllLink(dst string, uuid string) *[]bean.GetLink
 	InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error
 	GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error)
+	IsUserPremiumUser(userEmail string) bool
 }
 
 type Impl struct {
@@ -118,4 +119,11 @@ func (impl *Impl) GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, erro
 		return nil, err
 	}
 	return result, nil
+}
+
+func (impl *Impl) IsUserPremiumUser(userEmail string) bool {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+
+	return false
 }
