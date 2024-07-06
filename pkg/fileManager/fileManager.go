@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/iraunit/get-link-backend/util"
 	"go.uber.org/zap"
+	"net/http"
 	"os"
 	"time"
 )
@@ -12,9 +13,11 @@ type FileManager interface {
 	GetPathToSaveFileFromWhatsapp(userEmail string) string
 	GetPathToSaveFileFromTelegram(userEmail string) string
 	GetPathToSaveFileFromGetLink(userEmail string) string
+	GetPathToSaveFileFromApp(userEmail, appName string) string
 	DeleteFileFromPathOlderThan24Hours(path string)
 	DeleteAllFileFromPath(path string)
 	GetSizeOfADirectory(path string) (int64, error)
+	DownloadDecryptedFile(w http.ResponseWriter, encryptedFilePath, email string) error
 }
 
 type FileManagerImpl struct {
@@ -37,6 +40,10 @@ func (impl *FileManagerImpl) GetPathToSaveFileFromTelegram(userEmail string) str
 
 func (impl *FileManagerImpl) GetPathToSaveFileFromGetLink(userEmail string) string {
 	return fmt.Sprintf(util.PathToFiles, userEmail, util.GETLINK)
+}
+
+func (impl *FileManagerImpl) GetPathToSaveFileFromApp(userEmail, appName string) string {
+	return fmt.Sprintf(util.PathToFiles, userEmail, appName)
 }
 
 func (impl *FileManagerImpl) DeleteFileFromPathOlderThan24Hours(path string) {
@@ -108,4 +115,27 @@ func (impl *FileManagerImpl) GetSizeOfADirectory(path string) (int64, error) {
 		return 0, err
 	}
 	return stats.Size() / 1000000, nil
+}
+
+func (impl *FileManagerImpl) DownloadDecryptedFile(w http.ResponseWriter, encryptedFilePath, email string) error {
+	encryptedData, err := os.ReadFile(encryptedFilePath)
+	if err != nil {
+		impl.logger.Errorw("Error reading encrypted file", "Error", err)
+		return err
+	}
+
+	key, err := util.CreateKey(email)
+	if err != nil {
+		impl.logger.Errorw("Error creating decryption key", "Error", err)
+		return err
+	}
+
+	err = util.DecryptFileAndSend(w, key, encryptedData, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error decrypting data", "Error", err)
+		return err
+	}
+
+	impl.logger.Infow("File successfully decrypted and sent")
+	return nil
 }

@@ -32,6 +32,7 @@ func InitializeApp() *App {
 		services.NewMailServiceImpl, wire.Bind(new(services.MailService), new(*services.MailServiceImpl)),
 		fileManager.NewFileManagerImpl, wire.Bind(new(fileManager.FileManager), new(*fileManager.FileManagerImpl)),
 		util.NewAsync,
+		restHandler.NewFileHandlerImpl, wire.Bind(new(restHandler.FileHandler), new(*restHandler.FileHandlerImpl)),
 	)
 	return &App{}
 }

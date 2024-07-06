@@ -6,18 +6,20 @@ import (
 )
 
 type MuxRouter struct {
-	Router     *mux.Router
-	middleware Middleware
-	Links      restHandler.Links
-	Whatsapp   restHandler.Whatsapp
+	Router      *mux.Router
+	middleware  Middleware
+	Links       restHandler.Links
+	Whatsapp    restHandler.Whatsapp
+	fileHandler restHandler.FileHandler
 }
 
-func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restHandler.Whatsapp) *MuxRouter {
+func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restHandler.Whatsapp, fileHandler restHandler.FileHandler) *MuxRouter {
 	return &MuxRouter{
-		Router:     mux.NewRouter(),
-		middleware: middleware,
-		Links:      links,
-		Whatsapp:   whatsapp,
+		Router:      mux.NewRouter(),
+		middleware:  middleware,
+		Links:       links,
+		Whatsapp:    whatsapp,
+		fileHandler: fileHandler,
 	}
 }
 
@@ -33,6 +35,7 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/verify-whatsapp-email", r.Links.VerifyWhatsappEmail).Methods("GET")
 	r.Router.HandleFunc("/whatsapp-webhook", r.Whatsapp.Verify).Methods("GET")
 	r.Router.HandleFunc("/whatsapp-webhook", r.Whatsapp.HandleMessage).Methods("POST")
-
+	r.Router.HandleFunc("/download-file/{appName}/{fileName}", r.fileHandler.DownloadFile).Methods("GET")
+	r.Router.HandleFunc("/upload-file", r.fileHandler.UploadFile).Methods("POST")
 	return r.Router
 }

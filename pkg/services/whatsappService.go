@@ -124,7 +124,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 			impl.logger.Errorw("Error in decrypting data", "Error: ", err)
 			return err
 		}
-		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(email.Email))
+		folderPath := impl.fileManager.GetPathToSaveFileFromWhatsapp(util.EncodeString(decryptedEmail))
 		impl.fileManager.DeleteFileFromPathOlderThan24Hours(folderPath)
 		folderSize, err := impl.fileManager.GetSizeOfADirectory(folderPath)
 		if err != nil {
@@ -140,7 +140,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 			impl.fileManager.DeleteAllFileFromPath(folderPath)
 		}
 
-		fileName += "." + fileExtension + ".bin"
+		fileName += fileExtension + ".bin"
 
 		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, fmt.Sprintf("%s/%s", folderPath, fileName), decryptedEmail)
 	}

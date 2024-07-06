@@ -130,12 +130,33 @@ func EncryptDataAndSaveToFile(w io.Writer, key []byte, data []byte, logger *zap.
 	return nil
 }
 
-func CreateKey(passphrase string) ([]byte, error) {
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return nil, err
+func CreateKey(email string) ([]byte, error) {
+	salt := []byte(email)
+	key := argon2.IDKey([]byte(email), salt, 1, 64*1024, 4, 32)
+	return key, nil
+}
+
+func DecryptFileAndSend(w io.Writer, key []byte, data []byte, logger *zap.SugaredLogger) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		logger.Errorw("Error creating cipher block", "Error", err)
+		return err
 	}
 
-	key := argon2.IDKey([]byte(passphrase), salt, 1, 64*1024, 4, 32)
-	return key, nil
+	if len(data) < aes.BlockSize {
+		return fmt.Errorf("ciphertext too short")
+	}
+
+	iv := data[:aes.BlockSize]
+	data = data[aes.BlockSize:]
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(data, data)
+
+	if _, err := w.Write(data); err != nil {
+		logger.Errorw("Error writing decrypted data to file", "Error", err)
+		return err
+	}
+
+	return nil
 }
