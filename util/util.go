@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"mime"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -38,6 +40,13 @@ func DecodeString(input string) (string, error) {
 	return string(decodedBytes), nil
 }
 
+func SanitizeFilename(filename string) string {
+	filename = strings.ReplaceAll(filename, " ", "_")
+	reg := regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+	filename = reg.ReplaceAllString(filename, "_")
+	return filename
+}
+
 func GetFileNameFromType(fileType, mimeType string) string {
-	return fmt.Sprintf("%s_%s_From-Get-Link", fileType, time.Now().UTC().Format(time.RFC822))
+	return SanitizeFilename(fmt.Sprintf("%s_%s_From-Get-Link", fileType, time.Now().UTC().Format(time.RFC1123)))
 }

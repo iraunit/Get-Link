@@ -26,15 +26,18 @@ type FileManager interface {
 	DownloadDecryptedFile(w http.ResponseWriter, encryptedFilePath, email string) error
 	ListAllFilesFromApp(userEmail, appName string) ([]bean.FileInfo, error)
 	SaveFileToPath(data io.ReadCloser, path, userEmail string) error
+	DeleteAllFileOlderThanHours(path string, hours int)
 }
 
 type FileManagerImpl struct {
 	logger *zap.SugaredLogger
+	async  *util.Async
 }
 
-func NewFileManagerImpl(logger *zap.SugaredLogger) *FileManagerImpl {
+func NewFileManagerImpl(logger *zap.SugaredLogger, async *util.Async) *FileManagerImpl {
 	return &FileManagerImpl{
 		logger: logger,
+		async:  async,
 	}
 }
 
@@ -139,7 +142,6 @@ func (impl *FileManagerImpl) DownloadDecryptedFile(w http.ResponseWriter, encryp
 	}
 
 	fileName := path.Base(encryptedFilePath)
-	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", "attachment; filename="+strings.TrimPrefix(fileName, ".bin"))
 
 	mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimPrefix(fileName, ".bin"), ".")[len(strings.Split(fileName, "."))-2]))
@@ -179,7 +181,7 @@ func (impl *FileManagerImpl) ListAllFilesFromApp(userEmail, appName string) ([]b
 			impl.logger.Errorw("Error in getting mime type", "Error", err)
 			continue
 		}
-		allFiles = append(allFiles, bean.FileInfo{Name: info.Name(), Size: info.Size(), ModTime: info.ModTime(), MimeType: mimeType, AppName: appName})
+		allFiles = append(allFiles, bean.FileInfo{Name: strings.TrimSuffix(info.Name(), ".bin"), Size: info.Size(), ModTime: info.ModTime(), MimeType: mimeType, AppName: appName})
 	}
 	return allFiles, nil
 }
@@ -218,4 +220,33 @@ func (impl *FileManagerImpl) SaveFileToPath(data io.ReadCloser, path, userEmail 
 		return err
 	}
 	return nil
+}
+
+func (impl *FileManagerImpl) DeleteAllFileOlderThanHours(p string, hours int) {
+	impl.async.Run(func() {
+		files, err := os.ReadDir(p)
+		if err != nil {
+			impl.logger.Errorw("Error in reading directory", "Error", err)
+			return
+		}
+		for _, file := range files {
+			info, err := file.Info()
+			if err != nil {
+				impl.logger.Errorw("Error in getting file info", "Error", err)
+				continue
+			}
+			if info.IsDir() {
+				impl.DeleteAllFileOlderThanHours(path.Join(p, info.Name()), hours)
+			} else {
+				if time.Since(info.ModTime()).Hours() > float64(hours) {
+					err = os.Remove(path.Join(p, info.Name()))
+					if err != nil {
+						impl.logger.Errorw("Error in deleting file", "Error", err)
+						continue
+					}
+					impl.logger.Infow("File deleted", "File", info.Name())
+				}
+			}
+		}
+	})
 }

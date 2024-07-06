@@ -10,7 +10,9 @@ import (
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
+	"strings"
 )
 
 type RestClient interface {
@@ -93,7 +95,15 @@ func (impl *RestClientImpl) DownloadMediaFromUrl(url, token, filePath, userEmail
 			return
 		}
 
-		_ = impl.fileManager.SaveFileToPath(resp.RawBody(), filePath, userEmail)
+		if resp.StatusCode() != http.StatusOK {
+			impl.logger.Errorw("HTTP request failed", "Status", resp.Status())
+			return
+		}
+
+		stringReader := strings.NewReader(string(resp.Body()))
+		stringReadCloser := io.NopCloser(stringReader)
+
+		_ = impl.fileManager.SaveFileToPath(stringReadCloser, filePath, userEmail)
 	})
 
 }

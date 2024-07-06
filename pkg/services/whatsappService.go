@@ -76,21 +76,37 @@ func (impl *WhatsappServiceImpl) ReceiveMessage(message *bean.WhatsAppBusinessMe
 		} else {
 			return impl.ParseMessageAndBroadcast(message.Text.Body, message.From)
 		}
-	} else if message.Type == "image" {
-		id := message.Image.ID
+	} else if message.Type == "image" || message.Type == "document" || message.Type == "video" {
+		id := ""
+		fileName := ""
+		if message.Type == "image" {
+			id = message.Image.ID
+		} else if message.Type == "document" {
+			id = message.Document.ID
+			fileName = message.Document.Filename
+		} else if message.Type == "video" {
+			id = message.Video.ID
+		}
+
 		data, err := impl.getMediaData(id)
 		if err != nil {
 			return err
 		}
-		err = impl.downloadMedia(data.Url, data.MimeType, message.From, util.GetFileNameFromType("image", data.MimeType))
+
+		if message.Type != "document" {
+			fileExtension, err := util.GetFileExtension(data.MimeType)
+			if err != nil {
+				impl.logger.Errorw("Error in getting file extension", "Error", err)
+				return err
+			}
+			fileName = util.GetFileNameFromType(message.Type, data.MimeType) + fileExtension
+		}
+
+		err = impl.downloadMedia(data.Url, message.From, fileName)
 		if err != nil {
 			impl.logger.Errorw("Error in downloading media", "Error", err)
 			return err
 		}
-	} else if message.Type == "document" {
-
-	} else if message.Type == "video" {
-
 	}
 	return nil
 }
@@ -107,13 +123,7 @@ func (impl *WhatsappServiceImpl) getMediaData(id string) (*bean.WhatsappMedia, e
 	return mediaData, nil
 }
 
-func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName string) error {
-
-	fileExtension, err := util.GetFileExtension(mimeType)
-	if err != nil {
-		impl.logger.Errorw("Error in getting file extension", "Error", err)
-		return err
-	}
+func (impl *WhatsappServiceImpl) downloadMedia(url, sender, fileNameWithExtension string) error {
 
 	allEmails, err := impl.GetUsersFromWhatsappNumber(sender)
 	if err != nil {
@@ -143,9 +153,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, mimeType, sender, fileName s
 			impl.fileManager.DeleteAllFileFromPath(folderPath)
 		}
 
-		fileName += fileExtension + ".bin"
-
-		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, path.Join(folderPath, fileName), decryptedEmail)
+		impl.restClient.DownloadMediaFromUrl(url, impl.cfg.AuthToken, path.Join(folderPath, fileNameWithExtension+".bin"), decryptedEmail)
 	}
 
 	return nil

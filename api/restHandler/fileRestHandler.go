@@ -76,7 +76,7 @@ func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) 
 
 	filename := header.Filename
 
-	err = impl.fileManager.SaveFileToPath(r.Body, fmt.Sprintf("%s/%s.bin", impl.fileManager.GetPathToSaveFileFromApp(util.EncodeString(email), util.GETLINK), filename), email)
+	err = impl.fileManager.SaveFileToPath(file, fmt.Sprintf("%s/%s.bin", impl.fileManager.GetPathToSaveFileFromApp(util.EncodeString(email), util.GETLINK), filename), email)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
@@ -104,4 +104,5 @@ func (impl *FileHandlerImpl) ListAllFiles(w http.ResponseWriter, r *http.Request
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: allFiles})
+	impl.fileManager.DeleteAllFileOlderThanHours("/tmp/data", 24)
 }

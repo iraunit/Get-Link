@@ -28,7 +28,7 @@ func InitializeApp() *App {
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
 	async := util.NewAsync(sugaredLogger)
-	fileManagerImpl := fileManager.NewFileManagerImpl(sugaredLogger)
+	fileManagerImpl := fileManager.NewFileManagerImpl(sugaredLogger, async)
 	restClientImpl := restCalls.NewRestClientImpl(sugaredLogger, async, fileManagerImpl)
 	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
 	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
