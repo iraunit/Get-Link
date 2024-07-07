@@ -27,6 +27,7 @@ type FileManager interface {
 	ListAllFilesFromApp(userEmail, appName string) ([]bean.FileInfo, error)
 	SaveFileToPath(data io.ReadCloser, path, userEmail string) error
 	DeleteAllFileOlderThanHours(path string, hours int)
+	DeleteAFileInAppFolder(fileName, email, app string) error
 }
 
 type FileManagerImpl struct {
@@ -249,4 +250,25 @@ func (impl *FileManagerImpl) DeleteAllFileOlderThanHours(p string, hours int) {
 			}
 		}
 	})
+}
+
+func (impl *FileManagerImpl) DeleteAFileInAppFolder(fileName, email, app string) error {
+	p := fmt.Sprintf(util.PathToFiles, util.EncodeString(email), app)
+	files, err := os.ReadDir(p)
+	if err != nil {
+		impl.logger.Errorw("Error in reading directory", "Error", err)
+		return err
+	}
+
+	for _, file := range files {
+		if file.Name() == fileName {
+			err = os.Remove(path.Join(p, fileName))
+			if err != nil {
+				impl.logger.Errorw("Error in deleting file", "Error", err)
+				return err
+			}
+			return nil
+		}
+	}
+	return nil
 }

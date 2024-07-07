@@ -17,6 +17,7 @@ type FileHandler interface {
 	DownloadFile(w http.ResponseWriter, r *http.Request)
 	UploadFile(w http.ResponseWriter, r *http.Request)
 	ListAllFiles(w http.ResponseWriter, r *http.Request)
+	DeleteFile(w http.ResponseWriter, r *http.Request)
 }
 
 type FileHandlerImpl struct {
@@ -105,4 +106,27 @@ func (impl *FileHandlerImpl) ListAllFiles(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: allFiles})
 	impl.fileManager.DeleteAllFileOlderThanHours("/tmp/data", 24)
+}
+
+func (impl *FileHandlerImpl) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	email := muxContext.Get(r, "email").(string)
+	vars := mux.Vars(r)
+	fileName := vars["fileName"] + ".bin"
+	appName := vars["appName"]
+
+	if fileName == "" || appName == "" || email == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "fileName or appName is missing"})
+		impl.logger.Errorw("fileName or appName is missing")
+		return
+	}
+
+	err := impl.fileManager.DeleteAFileInAppFolder(fileName, email, appName)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
+		impl.logger.Errorw("Error in deleting file", "Error", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
