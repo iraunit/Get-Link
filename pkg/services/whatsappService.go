@@ -145,7 +145,7 @@ func (impl *WhatsappServiceImpl) downloadMedia(url, sender, fileNameWithExtensio
 			return err
 		}
 		maxLimit := util.FreeWhatsappFileLimitSizeMB
-		if impl.repository.IsUserPremiumUser(decryptedEmail) {
+		if impl.repository.IsUserPremiumUser(email.Email) {
 			maxLimit = util.PremiumWhatsappFileLimitSizeMB
 		}
 

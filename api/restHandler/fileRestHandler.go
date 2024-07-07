@@ -6,6 +6,7 @@ import (
 	muxContext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/iraunit/get-link-backend/pkg/fileManager"
+	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -23,12 +24,14 @@ type FileHandler interface {
 type FileHandlerImpl struct {
 	logger      *zap.SugaredLogger
 	fileManager fileManager.FileManager
+	fileService services.FileService
 }
 
-func NewFileHandlerImpl(logger *zap.SugaredLogger, fileManager fileManager.FileManager) *FileHandlerImpl {
+func NewFileHandlerImpl(logger *zap.SugaredLogger, fileManager fileManager.FileManager, fileService services.FileService) *FileHandlerImpl {
 	return &FileHandlerImpl{
 		logger:      logger,
 		fileManager: fileManager,
+		fileService: fileService,
 	}
 }
 
@@ -76,6 +79,8 @@ func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) 
 	}(file)
 
 	filename := header.Filename
+
+	impl.fileService.CleanGetLinkAppFiles(email)
 
 	err = impl.fileManager.SaveFileToPath(file, fmt.Sprintf("%s/%s.bin", impl.fileManager.GetPathToSaveFileFromApp(util.EncodeString(email), util.GETLINK), filename), email)
 	if err != nil {

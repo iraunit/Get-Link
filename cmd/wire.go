@@ -34,6 +34,7 @@ func InitializeApp() *App {
 		fileManager.NewFileManagerImpl, wire.Bind(new(fileManager.FileManager), new(*fileManager.FileManagerImpl)),
 		util.NewAsync,
 		restHandler.NewFileHandlerImpl, wire.Bind(new(restHandler.FileHandler), new(*restHandler.FileHandlerImpl)),
+		services.NewFileServiceImpl, wire.Bind(new(services.FileService), new(*services.FileServiceImpl)),
 	)
 	return &App{}
 }
