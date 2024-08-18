@@ -71,7 +71,7 @@ func (impl *FileManagerImpl) DeleteFileFromPathOlderThan24Hours(path string) {
 			impl.logger.Errorw("Error in getting file info", "Error", err)
 			continue
 		}
-		if info.ModTime().Before(time.Now().Add(-24 * time.Hour)) {
+		if info.ModTime().Before(time.Now().Add(-240 * time.Hour)) {
 			impl.DeleteFileFromPath(fmt.Sprintf("%s/%s", path, info.Name()))
 		}
 	}

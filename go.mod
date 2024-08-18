@@ -6,6 +6,7 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-pg/pg v8.0.7+incompatible
 	github.com/go-resty/resty/v2 v2.12.0
+	github.com/go-telegram/bot v1.7.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/wire v0.6.0
 	github.com/gorilla/context v1.1.2

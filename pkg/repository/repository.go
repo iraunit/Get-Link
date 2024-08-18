@@ -18,6 +18,7 @@ type Repository interface {
 	InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error
 	GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error)
 	IsUserPremiumUser(userEmail string) bool
+	InsertUpdateTelegramNumber(email, chatId, senderId string) error
 }
 
 type Impl struct {
@@ -126,4 +127,11 @@ func (impl *Impl) IsUserPremiumUser(userEmail string) bool {
 	defer impl.lock.Unlock()
 
 	return false
+}
+
+func (impl *Impl) InsertUpdateTelegramNumber(email, chatId, senderId string) error {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+	_, err := impl.db.Model(&bean.TelegramEmail{Email: email, ChatId: chatId, SenderId: senderId}).Insert()
+	return err
 }

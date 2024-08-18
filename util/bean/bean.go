@@ -73,6 +73,13 @@ type WhatsappVerificationClaims struct {
 	jwt.RegisteredClaims
 }
 
+type TelegramVerificationClaims struct {
+	Email    string `json:"email,omitempty"`
+	SenderId int64  `json:"sender_id,omitempty"`
+	ChatId   int64  `json:"chat_id,omitempty"`
+	jwt.RegisteredClaims
+}
+
 type CookieConfig struct {
 	Domain string `env:"DOMAIN"`
 	Type   string `env:"TYPE"`
@@ -85,9 +92,21 @@ type WhatsAppConfig struct {
 	VerifyToken string `env:"VERIFY_TOKEN"`
 }
 
+type TelegramCfg struct {
+	TelegramToken string `env:"TELEGRAM_TOKEN"`
+	BaseUrl       string `env:"BASE_URL"`
+	JwtKey        string `env:"JWT_KEY" envDefault:"secret"`
+}
+
 type WhatsappEmail struct {
 	Email         string `sql:"email" json:"email,omitempty"`
 	WhatAppNumber string `sql:"whatsapp_number" json:"whatsapp_number,omitempty"`
+}
+
+type TelegramEmail struct {
+	Email    string `sql:"email" json:"email,omitempty"`
+	SenderId string `sql:"sender_id" json:"sender_id,omitempty"`
+	ChatId   string `sql:"chat_id" json:"chat_id,omitempty"`
 }
 
 type MailConfig struct {

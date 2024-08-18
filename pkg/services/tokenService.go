@@ -9,7 +9,8 @@ import (
 )
 
 type TokenService interface {
-	EmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error)
+	WhatsappEmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error)
+	TelegramEmailVerificationToken(claims *bean.TelegramVerificationClaims) (string, error)
 }
 
 type TokenServiceImpl struct {
@@ -28,7 +29,16 @@ func NewTokenServiceImpl(logger *zap.SugaredLogger) *TokenServiceImpl {
 	}
 }
 
-func (impl *TokenServiceImpl) EmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error) {
+func (impl *TokenServiceImpl) WhatsappEmailVerificationToken(claims *bean.WhatsappVerificationClaims) (string, error) {
+	claims.ExpiresAt = &jwt.NumericDate{
+		Time: time.Now().Add(24 * time.Hour),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err := token.SignedString([]byte(impl.cfg.JwtKey))
+	return tokenStr, err
+}
+
+func (impl *TokenServiceImpl) TelegramEmailVerificationToken(claims *bean.TelegramVerificationClaims) (string, error) {
 	claims.ExpiresAt = &jwt.NumericDate{
 		Time: time.Now().Add(24 * time.Hour),
 	}

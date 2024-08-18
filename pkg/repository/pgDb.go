@@ -45,7 +45,8 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "telegram_emails" (
 		"email" VARCHAR (512) PRIMARY KEY,
-		"telegram_username" VARCHAR(512)
+		"sender_id" VARCHAR(512),
+        "chat_id" VARCHAR(512)
 	  );`)
 
 	if err != nil {

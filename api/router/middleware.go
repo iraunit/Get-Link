@@ -35,8 +35,8 @@ func NewMiddlewareImpl(logger *zap.SugaredLogger) *MiddlewareImpl {
 
 func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == util.WhatsappWebhook || r.URL.Path == util.VerifyWhatsappEmail {
-			if r.URL.Path == util.VerifyWhatsappEmail {
+		if r.URL.Path == util.WhatsappWebhook || r.URL.Path == util.VerifyWhatsappEmail || r.URL.Path == util.VerifyTelegramEmail {
+			if r.URL.Path == util.VerifyWhatsappEmail || r.URL.Path == util.VerifyTelegramEmail {
 				context.Set(r, util.UUID, "Verify Email")
 			} else if r.URL.Path == util.WhatsappWebhook {
 				context.Set(r, util.UUID, util.WHATSAPP)

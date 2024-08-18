@@ -163,12 +163,12 @@ func (impl *WhatsappServiceImpl) VerifyEmail(message string, number string) {
 	re := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
 	emails := re.FindAllString(message, -1)
 	claims := bean.WhatsappVerificationClaims{Email: emails[0], WhatAppNumber: number}
-	token, err := impl.tokenService.EmailVerificationToken(&claims)
+	token, err := impl.tokenService.WhatsappEmailVerificationToken(&claims)
 	if err != nil {
 		impl.logger.Errorw("Error in generating token", "Error", err)
 		return
 	}
-	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s/%s?token=%s", impl.cfg.Baseurl, util.VerifyWhatsappEmail, url.QueryEscape(token))
+	emailBody := fmt.Sprintf("Please click on the below link to verify your email. \n\n %s%s?token=%s", impl.cfg.Baseurl, util.VerifyWhatsappEmail, url.QueryEscape(token))
 	err = impl.mailService.SendMail(emails[0], "Get-Link - Email Verification", emailBody)
 	if err != nil {
 		impl.logger.Errorw("Error in sending mail", "Error", err)

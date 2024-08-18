@@ -11,15 +11,17 @@ type MuxRouter struct {
 	Links       restHandler.Links
 	Whatsapp    restHandler.Whatsapp
 	fileHandler restHandler.FileHandler
+	Telegram    restHandler.TelegramRestHandler
 }
 
-func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restHandler.Whatsapp, fileHandler restHandler.FileHandler) *MuxRouter {
+func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restHandler.Whatsapp, fileHandler restHandler.FileHandler, telegram restHandler.TelegramRestHandler) *MuxRouter {
 	return &MuxRouter{
 		Router:      mux.NewRouter(),
 		middleware:  middleware,
 		Links:       links,
 		Whatsapp:    whatsapp,
 		fileHandler: fileHandler,
+		Telegram:    telegram,
 	}
 }
 
@@ -39,5 +41,6 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/upload-file", r.fileHandler.UploadFile).Methods("POST")
 	r.Router.HandleFunc("/list-files", r.fileHandler.ListAllFiles).Methods("GET")
 	r.Router.HandleFunc("/delete-file/{appName}/{fileName}", r.fileHandler.DeleteFile).Methods("DELETE")
+	r.Router.HandleFunc("/verify-telegram-email", r.Telegram.VerifyTelegramEmail).Methods("GET")
 	return r.Router
 }

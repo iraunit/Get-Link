@@ -35,6 +35,8 @@ func InitializeApp() *App {
 		util.NewAsync,
 		restHandler.NewFileHandlerImpl, wire.Bind(new(restHandler.FileHandler), new(*restHandler.FileHandlerImpl)),
 		services.NewFileServiceImpl, wire.Bind(new(services.FileService), new(*services.FileServiceImpl)),
+		restHandler.NewTelegramRestHandler, wire.Bind(new(restHandler.TelegramRestHandler), new(*restHandler.TelegramRestHandlerImpl)),
+		services.NewTelegramService, wire.Bind(new(services.TelegramService), new(*services.TelegramImpl)),
 	)
 	return &App{}
 }

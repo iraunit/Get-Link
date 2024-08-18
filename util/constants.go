@@ -18,6 +18,7 @@ const (
 const (
 	WhatsappWebhook     = "/whatsapp-webhook"
 	VerifyWhatsappEmail = "/verify-whatsapp-email"
+	VerifyTelegramEmail = "/verify-telegram-email"
 )
 
 const (
