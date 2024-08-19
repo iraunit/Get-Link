@@ -8,7 +8,9 @@ const (
 	ChromeExtensionUrl              = "chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"
 	PathToFiles                     = "/tmp/data/%s/%s"
 	FreeWhatsappFileLimitSizeMB     = 50
+	FreeTelegramFileLimitSizeMB     = 50
 	PremiumWhatsappFileLimitSizeMB  = 100
+	PremiumTelegramFileLimitSizeMB  = 100
 	FreeGetLinkFileLimitSizeMB      = 100
 	PremiumGetLinkFileLimitSizeMB   = 200
 )

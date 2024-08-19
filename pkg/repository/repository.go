@@ -16,7 +16,8 @@ type Repository interface {
 	DeleteLink(data *bean.GetLink) error
 	GetAllLink(dst string, uuid string) *[]bean.GetLink
 	InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error
-	GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error)
+	GetEmailsFromWhatsappNumber(number string) ([]bean.WhatsappEmail, error)
+	GetEmailsFromTelegramSender(sender string) ([]bean.TelegramEmail, error)
 	IsUserPremiumUser(userEmail string) bool
 	InsertUpdateTelegramNumber(email, chatId, senderId string) error
 }
@@ -110,7 +111,7 @@ func (impl *Impl) InsertUpdateWhatsappNumber(claims *bean.WhatsappEmail) error {
 	}
 }
 
-func (impl *Impl) GetEmailsFromNumber(number string) ([]bean.WhatsappEmail, error) {
+func (impl *Impl) GetEmailsFromWhatsappNumber(number string) ([]bean.WhatsappEmail, error) {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 	var result []bean.WhatsappEmail
@@ -134,4 +135,16 @@ func (impl *Impl) InsertUpdateTelegramNumber(email, chatId, senderId string) err
 	defer impl.lock.Unlock()
 	_, err := impl.db.Model(&bean.TelegramEmail{Email: email, ChatId: chatId, SenderId: senderId}).Insert()
 	return err
+}
+
+func (impl *Impl) GetEmailsFromTelegramSender(sender string) ([]bean.TelegramEmail, error) {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+	var result []bean.TelegramEmail
+	err := impl.db.Model(&result).Column("email").Where("sender_id = ?", sender).Select()
+	if err != nil {
+		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
+		return nil, err
+	}
+	return result, nil
 }

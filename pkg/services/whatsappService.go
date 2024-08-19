@@ -201,7 +201,7 @@ func (impl *WhatsappServiceImpl) GetUsersFromWhatsappNumber(sender string) ([]be
 		impl.logger.Errorw("Error in encryption", "Error: ", err)
 		return nil, err
 	}
-	allEmails, err := impl.repository.GetEmailsFromNumber(encryptedSender)
+	allEmails, err := impl.repository.GetEmailsFromWhatsappNumber(encryptedSender)
 	if err != nil {
 		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
 		return nil, err

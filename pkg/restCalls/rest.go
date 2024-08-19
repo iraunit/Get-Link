@@ -19,6 +19,7 @@ type RestClient interface {
 	SendWhatsappMessage(url string, body interface{}) (string, error)
 	GetMediaDataFromId(url string) (*bean.WhatsappMedia, error)
 	DownloadMediaFromUrl(url string, token string, filePath string, userEmail string)
+	DownloadTelegramMediaFromUrl(url, filePath, userEmail string)
 }
 
 type RestClientImpl struct {
@@ -92,6 +93,30 @@ func (impl *RestClientImpl) DownloadMediaFromUrl(url, token, filePath, userEmail
 		resp, err := client.R().SetHeader("Authorization", "Bearer "+token).Get(url)
 		if err != nil {
 			impl.logger.Errorw("Error in downloading whatsapp media", "Error", err)
+			return
+		}
+
+		if resp.StatusCode() != http.StatusOK {
+			impl.logger.Errorw("HTTP request failed", "Status", resp.Status())
+			return
+		}
+
+		stringReader := strings.NewReader(string(resp.Body()))
+		stringReadCloser := io.NopCloser(stringReader)
+
+		_ = impl.fileManager.SaveFileToPath(stringReadCloser, filePath, userEmail)
+	})
+
+}
+
+func (impl *RestClientImpl) DownloadTelegramMediaFromUrl(url, filePath, userEmail string) {
+
+	impl.async.Run(func() {
+		client := resty.New()
+
+		resp, err := client.R().Get(url)
+		if err != nil {
+			impl.logger.Errorw("Error in downloading telegram media", "Error", err)
 			return
 		}
 

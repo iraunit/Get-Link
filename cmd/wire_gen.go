@@ -36,7 +36,7 @@ func InitializeApp() *App {
 	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
 	fileServiceImpl := services.NewFileServiceImpl(sugaredLogger, impl, fileManagerImpl)
 	fileHandlerImpl := restHandler.NewFileHandlerImpl(sugaredLogger, fileManagerImpl, fileServiceImpl)
-	telegramImpl := services.NewTelegramService(sugaredLogger, async, mailServiceImpl, tokenServiceImpl, impl)
+	telegramImpl := services.NewTelegramService(sugaredLogger, async, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl, fileManagerImpl, restClientImpl)
 	telegramRestHandlerImpl := restHandler.NewTelegramRestHandler(sugaredLogger, telegramImpl)
 	muxRouter := router.NewMuxRouter(middlewareImpl, linksImpl, whatsappImpl, fileHandlerImpl, telegramRestHandlerImpl)
 	app := NewApp(sugaredLogger, muxRouter)
