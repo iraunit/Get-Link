@@ -36,6 +36,7 @@ type File struct {
 	FileUniqueID string `json:"file_unique_id"`
 	FileSize     int    `json:"file_size,omitempty"`
 	FilePath     string `json:"file_path,omitempty"`
+	FileName     string `json:"file_name,omitempty"`
 }
 
 type TelegramService interface {
@@ -137,6 +138,7 @@ func (impl *TelegramImpl) ReceiveTelegramMessage(ctx context.Context, b *bot.Bot
 		impl.SendTelegramMessage(update.Message.Chat.ID, update.Message.Text)
 	} else {
 		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
+			flag := true
 			for _, photo := range update.Message.Photo {
 				filePath, err := impl.getFilePath(photo.FileID)
 				if err != nil {
@@ -150,9 +152,42 @@ func (impl *TelegramImpl) ReceiveTelegramMessage(ctx context.Context, b *bot.Bot
 				if err != nil {
 					impl.logger.Errorw("Error in downloading media", "Error", err)
 					impl.SendTelegramMessage(update.Message.Chat.ID, "error in downloading media, cannot send image to get link devices.")
+					flag = false
 				}
 			}
+			if flag {
+				impl.SendTelegramMessage(update.Message.Chat.ID, "Image uploaded successfully. \n\nYou can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution")
+			}
+		} else {
+			switch {
+			case update.Message.Document != nil:
+				impl.handleMedia("Document", update.Message.Document.FileID, update.Message.Document.FileName, update.Message.Chat.ID, update.Message.From.ID)
+			case update.Message.Audio != nil:
+				impl.handleMedia("Audio", update.Message.Audio.FileID, update.Message.Audio.FileName, update.Message.Chat.ID, update.Message.From.ID)
+			case update.Message.Video != nil:
+				impl.handleMedia("Video", update.Message.Video.FileID, update.Message.Video.FileName, update.Message.Chat.ID, update.Message.From.ID)
+			}
 		}
+	}
+}
+
+func (impl *TelegramImpl) handleMedia(uploadType string, fileID, fileName string, chatID, userID int64) {
+	filePath, err := impl.getFilePath(fileID)
+	if err != nil {
+		impl.logger.Errorw(fmt.Sprintf("Error in getting file path for %s", uploadType), "Error", err)
+		impl.SendTelegramMessage(chatID, fmt.Sprintf("Error in getting file path, cannot send %s to get link devices.", uploadType))
+		return
+	}
+	if fileName == "" {
+		fileNameArray := strings.Split(filePath, "/")
+		fileName = fileNameArray[len(fileNameArray)-1]
+	}
+	err = impl.downloadMedia(fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", impl.cfg.TelegramToken, filePath), strconv.FormatInt(userID, 10), fileName)
+	if err != nil {
+		impl.logger.Errorw(fmt.Sprintf("Error in downloading %s", uploadType), "Error", err)
+		impl.SendTelegramMessage(chatID, fmt.Sprintf("Error in downloading %s, cannot send %s to get link devices.", uploadType, uploadType))
+	} else {
+		impl.SendTelegramMessage(chatID, fmt.Sprintf("%s uploaded successfully.\n\nYou can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution", uploadType))
 	}
 }
 
