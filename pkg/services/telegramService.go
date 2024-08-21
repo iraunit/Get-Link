@@ -89,6 +89,8 @@ func NewTelegramService(logger *zap.SugaredLogger, async *util.Async, mailServic
 		logger.Fatalw("error in creating telegram bot", "error", err)
 	}
 
+	impl.bot = b
+
 	async.Run(func() {
 		b.Start(ctx)
 	})
@@ -194,6 +196,9 @@ func (impl *TelegramImpl) handleMedia(uploadType string, fileID, fileName string
 }
 
 func (impl *TelegramImpl) SendTelegramMessage(chatID int64, message string) {
+	if impl.bot == nil {
+		return
+	}
 	_, err := impl.bot.SendMessage(impl.ctx, &bot.SendMessageParams{
 		ChatID: chatID,
 		Text:   message,
