@@ -42,5 +42,6 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/list-files", r.fileHandler.ListAllFiles).Methods("GET")
 	r.Router.HandleFunc("/delete-file/{appName}/{fileName}", r.fileHandler.DeleteFile).Methods("DELETE")
 	r.Router.HandleFunc("/verify-telegram-email", r.Telegram.VerifyTelegramEmail).Methods("GET")
+	r.Router.HandleFunc("/send-telegram-message", r.Telegram.SendTelegramMessage).Methods("POST")
 	return r.Router
 }

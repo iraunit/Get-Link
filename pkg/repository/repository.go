@@ -20,6 +20,7 @@ type Repository interface {
 	GetEmailsFromTelegramSender(sender string) ([]bean.TelegramEmail, error)
 	IsUserPremiumUser(userEmail string) bool
 	InsertUpdateTelegramNumber(email, chatId, senderId string) error
+	GetEmailsFromEmail(sender string) ([]bean.TelegramEmail, error)
 }
 
 type Impl struct {
@@ -133,7 +134,11 @@ func (impl *Impl) IsUserPremiumUser(userEmail string) bool {
 func (impl *Impl) InsertUpdateTelegramNumber(email, chatId, senderId string) error {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
-	_, err := impl.db.Model(&bean.TelegramEmail{Email: email, ChatId: chatId, SenderId: senderId}).Insert()
+	_, err := impl.db.Model(&bean.TelegramEmail{}).Where("email = ?", email).Delete()
+	if err != nil {
+		return err
+	}
+	_, err = impl.db.Model(&bean.TelegramEmail{Email: email, ChatId: chatId, SenderId: senderId}).Insert()
 	return err
 }
 
@@ -144,6 +149,18 @@ func (impl *Impl) GetEmailsFromTelegramSender(sender string) ([]bean.TelegramEma
 	err := impl.db.Model(&result).Column("email").Where("sender_id = ?", sender).Select()
 	if err != nil {
 		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (impl *Impl) GetEmailsFromEmail(sender string) ([]bean.TelegramEmail, error) {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+	var result []bean.TelegramEmail
+	err := impl.db.Model(&result).Where("email = ?", sender).Select()
+	if err != nil {
+		impl.logger.Errorw("Error in getting emails from email", "Error: ", err)
 		return nil, err
 	}
 	return result, nil

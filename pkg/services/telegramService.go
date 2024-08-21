@@ -43,6 +43,8 @@ type TelegramService interface {
 	ReceiveTelegramMessage(ctx context.Context, b *bot.Bot, update *models.Update)
 	SendTelegramMessage(chatID int64, message string)
 	VerifyTelegram(email string, claims *bean.TelegramVerificationClaims) error
+	GetUsersFromTelegramNumber(sender string) ([]bean.TelegramEmail, error)
+	GetUsersFromEmail(email string) ([]bean.TelegramEmail, error)
 }
 
 type TelegramImpl struct {
@@ -123,7 +125,7 @@ func (impl *TelegramImpl) ReceiveTelegramMessage(ctx context.Context, b *bot.Bot
 		allEmails, err := impl.GetUsersFromTelegramNumber(strconv.FormatInt(update.Message.From.ID, 10))
 		if err != nil {
 			impl.logger.Errorw("Error in getting users from telegram number", "Error", err)
-			impl.SendTelegramMessage(update.Message.Chat.ID, "Error in getting users from telegram number")
+			impl.SendTelegramMessage(update.Message.Chat.ID, "Have you set your email here. Please send 'set email youremail@gmail.com' and then verify by clicking on the link received on your email.")
 			return
 		}
 		for _, email := range allEmails {
@@ -204,6 +206,8 @@ func (impl *TelegramImpl) SendTelegramMessage(chatID int64, message string) {
 func (impl *TelegramImpl) VerifyTelegram(email string, claims *bean.TelegramVerificationClaims) error {
 	senderId := strconv.FormatInt(claims.SenderId, 10)
 	chatId := strconv.FormatInt(claims.ChatId, 10)
+	senderIdCpy := senderId
+	chatIdCpy := chatId
 	encryptedEmail, err := cryptography.EncryptData(senderId, email, impl.logger)
 	if err != nil {
 		impl.logger.Errorw("Error in encrypting data", "Error: ", err)
@@ -238,14 +242,14 @@ func (impl *TelegramImpl) VerifyTelegram(email string, claims *bean.TelegramVeri
 	}
 
 	if claims.SenderId != 0 {
-		senderId, err = cryptography.EncryptData(email, senderId, impl.logger)
+		senderId, err = cryptography.EncryptData(email, senderIdCpy, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 			return err
 		}
 	}
 	if claims.ChatId != 0 {
-		chatId, err = cryptography.EncryptData(email, chatId, impl.logger)
+		chatId, err = cryptography.EncryptData(email, chatIdCpy, impl.logger)
 		if err != nil {
 			impl.logger.Errorw("Error in encrypting data", "Error: ", err)
 			return err
@@ -268,6 +272,23 @@ func (impl *TelegramImpl) GetUsersFromTelegramNumber(sender string) ([]bean.Tele
 		return nil, err
 	}
 	allEmails, err := impl.repository.GetEmailsFromTelegramSender(encryptedSender)
+	if err != nil {
+		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
+		return nil, err
+	}
+	if len(allEmails) == 0 {
+		return nil, pg.ErrNoRows
+	}
+	return allEmails, nil
+}
+
+func (impl *TelegramImpl) GetUsersFromEmail(email string) ([]bean.TelegramEmail, error) {
+	encryptedSender, err := cryptography.EncryptData(email, email, impl.logger)
+	if err != nil {
+		impl.logger.Errorw("Error in encryption", "Error: ", err)
+		return nil, err
+	}
+	allEmails, err := impl.repository.GetEmailsFromEmail(encryptedSender)
 	if err != nil {
 		impl.logger.Errorw("Error in getting emails from number", "Error: ", err)
 		return nil, err
