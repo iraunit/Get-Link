@@ -15,6 +15,8 @@ WORKDIR /app/cmd
 
 RUN wire
 
+RUN printenv > .env
+
 RUN go build -o server .
 
 EXPOSE 8080
