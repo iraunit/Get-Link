@@ -33,7 +33,7 @@ func (app *App) Start() {
 	app.Logger.Infow(fmt.Sprintf("Starting server on port %s", cfg.Port))
 	app.MuxRouter.GetRouter()
 
-	corsOrigins := handlers.AllowedOrigins([]string{util.ChromeExtensionUrl})
+	corsOrigins := handlers.AllowedOrigins([]string{util.ChromeExtensionUrl, "https://getlink.codingkaro.in", "https://getlink.shyptsolution.com"})
 	corsHeaders := handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding"})
 	corsMethods := handlers.AllowedMethods([]string{"POST", "DELETE", "GET", "OPTIONS"})
 
