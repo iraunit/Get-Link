@@ -156,7 +156,7 @@ func (impl *TelegramImpl) ReceiveTelegramMessage(ctx context.Context, b *bot.Bot
 				err = impl.downloadMedia(fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", impl.cfg.TelegramToken, filePath), strconv.FormatInt(update.Message.From.ID, 10), fileName)
 				if err != nil {
 					impl.logger.Errorw("Error in downloading media", "Error", err)
-					impl.SendTelegramMessage(update.Message.Chat.ID, "error in downloading media, cannot send image to get link devices.")
+					impl.SendTelegramMessage(update.Message.Chat.ID, "error in downloading media, cannot send image to get link devices. "+err.Error())
 					flag = false
 				}
 			}
@@ -190,7 +190,7 @@ func (impl *TelegramImpl) handleMedia(uploadType string, fileID, fileName string
 	err = impl.downloadMedia(fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", impl.cfg.TelegramToken, filePath), strconv.FormatInt(userID, 10), fileName)
 	if err != nil {
 		impl.logger.Errorw(fmt.Sprintf("Error in downloading %s", uploadType), "Error", err)
-		impl.SendTelegramMessage(chatID, fmt.Sprintf("Error in downloading %s, cannot send %s to get link devices.", uploadType, uploadType))
+		impl.SendTelegramMessage(chatID, fmt.Sprintf("Error in downloading %s, cannot send %s to get link devices. %s", uploadType, uploadType, err.Error()))
 	} else {
 		impl.SendTelegramMessage(chatID, fmt.Sprintf("%s uploaded successfully.\n\nYou can share your feedback or report an issue on codingkaro.in.\n\nRegards\nRaunit Verma\nShypt Solution", uploadType))
 	}
