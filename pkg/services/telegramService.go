@@ -12,6 +12,7 @@ import (
 	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/pkg/restCalls"
+	tokenService2 "github.com/iraunit/get-link-backend/pkg/services/tokenService"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -53,7 +54,7 @@ type TelegramImpl struct {
 	bot          *bot.Bot
 	ctx          context.Context
 	mailService  MailService
-	tokenService TokenService
+	tokenService tokenService2.TokenService
 	cfg          *bean.TelegramCfg
 	repository   repository.Repository
 	linkService  LinkService
@@ -61,7 +62,7 @@ type TelegramImpl struct {
 	restClient   restCalls.RestClient
 }
 
-func NewTelegramService(logger *zap.SugaredLogger, async *util.Async, mailService MailService, tokenService TokenService, repository repository.Repository, linkService LinkService, fileManager fileManager.FileManager, restClient restCalls.RestClient) *TelegramImpl {
+func NewTelegramService(logger *zap.SugaredLogger, async *util.Async, mailService MailService, tokenService tokenService2.TokenService, repository repository.Repository, linkService LinkService, fileManager fileManager.FileManager, restClient restCalls.RestClient) *TelegramImpl {
 	ctx := context.Background()
 	cfg := &bean.TelegramCfg{}
 	if err := env.Parse(cfg); err != nil {

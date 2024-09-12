@@ -38,6 +38,7 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/whatsapp-webhook", r.Whatsapp.Verify).Methods("GET")
 	r.Router.HandleFunc("/whatsapp-webhook", r.Whatsapp.HandleMessage).Methods("POST")
 	r.Router.HandleFunc("/download-file/{appName}/{fileName}", r.fileHandler.DownloadFile).Methods("GET")
+	r.Router.HandleFunc("/download-shared-file/{appName}/{fileName}", r.fileHandler.DownloadFile).Methods("GET")
 	r.Router.HandleFunc("/upload-file", r.fileHandler.UploadFile).Methods("POST")
 	r.Router.HandleFunc("/list-files", r.fileHandler.ListAllFiles).Methods("GET")
 	r.Router.HandleFunc("/delete-file/{appName}/{fileName}", r.fileHandler.DeleteFile).Methods("DELETE")

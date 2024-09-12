@@ -13,6 +13,7 @@ import (
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/pkg/restCalls"
 	"github.com/iraunit/get-link-backend/pkg/services"
+	"github.com/iraunit/get-link-backend/pkg/services/tokenService"
 	"github.com/iraunit/get-link-backend/util"
 )
 
@@ -28,10 +29,10 @@ func InitializeApp() *App {
 	linkServiceImpl := services.NewLinkServiceImpl(client, sugaredLogger, v, impl)
 	linksImpl := restHandler.NewLinksImpl(sugaredLogger, client, db, v, linkServiceImpl)
 	async := util.NewAsync(sugaredLogger)
-	fileManagerImpl := fileManager.NewFileManagerImpl(sugaredLogger, async)
+	tokenServiceImpl := tokenService.NewTokenServiceImpl(sugaredLogger)
+	fileManagerImpl := fileManager.NewFileManagerImpl(sugaredLogger, async, tokenServiceImpl)
 	restClientImpl := restCalls.NewRestClientImpl(sugaredLogger, async, fileManagerImpl)
 	mailServiceImpl := services.NewMailServiceImpl(sugaredLogger)
-	tokenServiceImpl := services.NewTokenServiceImpl(sugaredLogger)
 	whatsappServiceImpl := services.NewWhatsappServiceImpl(sugaredLogger, restClientImpl, mailServiceImpl, tokenServiceImpl, impl, linkServiceImpl, fileManagerImpl)
 	whatsappImpl := restHandler.NewWhatsappImpl(sugaredLogger, whatsappServiceImpl)
 	fileServiceImpl := services.NewFileServiceImpl(sugaredLogger, impl, fileManagerImpl)
