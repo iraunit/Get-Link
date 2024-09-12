@@ -8,6 +8,7 @@ import (
 	"github.com/iraunit/get-link-backend/pkg/fileManager"
 	"github.com/iraunit/get-link-backend/pkg/repository"
 	"github.com/iraunit/get-link-backend/pkg/restCalls"
+	tokenService2 "github.com/iraunit/get-link-backend/pkg/services/tokenService"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -29,13 +30,13 @@ type WhatsappServiceImpl struct {
 	cfg          bean.WhatsAppConfig
 	restClient   restCalls.RestClient
 	mailService  MailService
-	tokenService TokenService
+	tokenService tokenService2.TokenService
 	repository   repository.Repository
 	linkService  LinkService
 	fileManager  fileManager.FileManager
 }
 
-func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient restCalls.RestClient, mailService MailService, tokenService TokenService, repository repository.Repository, linkService LinkService, fileManager fileManager.FileManager) *WhatsappServiceImpl {
+func NewWhatsappServiceImpl(logger *zap.SugaredLogger, restClient restCalls.RestClient, mailService MailService, tokenService tokenService2.TokenService, repository repository.Repository, linkService LinkService, fileManager fileManager.FileManager) *WhatsappServiceImpl {
 	cfg := bean.WhatsAppConfig{}
 	if err := env.Parse(&cfg); err != nil {
 		logger.Fatal("Error loading Cfg from env", "Error", zap.Error(err))

@@ -7,12 +7,12 @@ const (
 	WhatsappCloudApiGetMediaDataUrl = `https://graph.facebook.com/v20.0/%s`
 	ChromeExtensionUrl              = "chrome-extension://pcphjmlofajahcidbgfgphicmmdfkdif"
 	PathToFiles                     = "/tmp/data/%s/%s"
-	FreeWhatsappFileLimitSizeMB     = 50
-	FreeTelegramFileLimitSizeMB     = 50
+	FreeWhatsappFileLimitSizeMB     = 500
+	FreeTelegramFileLimitSizeMB     = 500
 	PremiumWhatsappFileLimitSizeMB  = 100
 	PremiumTelegramFileLimitSizeMB  = 100
-	FreeGetLinkFileLimitSizeMB      = 100
-	PremiumGetLinkFileLimitSizeMB   = 200
+	FreeGetLinkFileLimitSizeMB      = 1000
+	PremiumGetLinkFileLimitSizeMB   = 2000
 )
 
 // routes

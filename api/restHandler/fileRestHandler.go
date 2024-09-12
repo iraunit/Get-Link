@@ -100,7 +100,7 @@ func (impl *FileHandlerImpl) ListAllFiles(w http.ResponseWriter, r *http.Request
 	appNames := []string{util.WHATSAPP, util.GETLINK, util.TELEGRAM}
 
 	for _, appName := range appNames {
-		files, err := impl.fileManager.ListAllFilesFromApp(util.EncodeString(email), appName)
+		files, err := impl.fileManager.ListAllFilesFromApp(email, appName)
 		if err != nil {
 			impl.logger.Errorw("Error in listing file", "appName", appName, "email", email, "Error", err)
 			continue

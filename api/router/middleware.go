@@ -9,6 +9,7 @@ import (
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 )
 
 type Middleware interface {
@@ -43,6 +44,25 @@ func (impl *MiddlewareImpl) AuthMiddleware(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 			return
+		} else if strings.Contains(r.URL.Path, "/download-shared-file/") {
+			query := r.URL.Query()
+			tokenStr := query.Get(util.AUTHORIZATION)
+
+			claims := bean.ShareFileClaims{}
+			_, err := jwt.ParseWithClaims(tokenStr, &claims, func(t *jwt.Token) (interface{}, error) {
+				return []byte(impl.cfg.JwtKey), nil
+			})
+
+			if err != nil {
+				if tokenStr != "undefined" {
+					impl.logger.Errorw("Unauthorised Request. Invalid token.", "URL", r.URL.Path, "Error", err)
+				}
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "Error parsing token."})
+				return
+			}
+			context.Set(r, util.EMAIL, claims.Email)
+			next.ServeHTTP(w, r)
 		} else {
 			query := r.URL.Query()
 			tokenStr := query.Get(util.AUTHORIZATION)

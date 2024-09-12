@@ -123,9 +123,17 @@ type EncryptDecryptConfig struct {
 }
 
 type FileInfo struct {
-	Name     string    `json:"name"`
-	Size     int64     `json:"size"`
-	ModTime  time.Time `json:"mod_time"`
-	MimeType string    `json:"mime_type"`
-	AppName  string    `json:"app_name,omitempty"`
+	Name          string    `json:"name"`
+	Size          int64     `json:"size"`
+	ModTime       time.Time `json:"mod_time"`
+	MimeType      string    `json:"mime_type"`
+	AppName       string    `json:"app_name,omitempty"`
+	ShareableLink string    `json:"shareable_link,omitempty"`
+}
+
+type ShareFileClaims struct {
+	FileName string `json:"file_name,omitempty"`
+	AppName  string `json:"app_name,omitempty"`
+	Email    string `json:"email,omitempty"`
+	jwt.RegisteredClaims
 }

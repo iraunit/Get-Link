@@ -3,6 +3,7 @@ package fileManager
 import (
 	"fmt"
 	"github.com/iraunit/get-link-backend/pkg/cryptography"
+	"github.com/iraunit/get-link-backend/pkg/services/tokenService"
 	"github.com/iraunit/get-link-backend/util"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -31,14 +32,16 @@ type FileManager interface {
 }
 
 type FileManagerImpl struct {
-	logger *zap.SugaredLogger
-	async  *util.Async
+	logger       *zap.SugaredLogger
+	async        *util.Async
+	tokenService tokenService.TokenService
 }
 
-func NewFileManagerImpl(logger *zap.SugaredLogger, async *util.Async) *FileManagerImpl {
+func NewFileManagerImpl(logger *zap.SugaredLogger, async *util.Async, tokenService tokenService.TokenService) *FileManagerImpl {
 	return &FileManagerImpl{
-		logger: logger,
-		async:  async,
+		logger:       logger,
+		async:        async,
+		tokenService: tokenService,
 	}
 }
 
@@ -162,9 +165,10 @@ func (impl *FileManagerImpl) DownloadDecryptedFile(w http.ResponseWriter, encryp
 	return nil
 }
 
-func (impl *FileManagerImpl) ListAllFilesFromApp(userEmail, appName string) ([]bean.FileInfo, error) {
+func (impl *FileManagerImpl) ListAllFilesFromApp(email, appName string) ([]bean.FileInfo, error) {
+	encodedEmail := util.EncodeString(email)
 	var allFiles []bean.FileInfo
-	folderPath := fmt.Sprintf(util.PathToFiles, userEmail, appName)
+	folderPath := fmt.Sprintf(util.PathToFiles, encodedEmail, appName)
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
 		impl.logger.Errorw("Error in reading directory", "Error", err)
@@ -182,7 +186,14 @@ func (impl *FileManagerImpl) ListAllFilesFromApp(userEmail, appName string) ([]b
 			impl.logger.Errorw("Error in getting mime type", "Error", err)
 			continue
 		}
-		allFiles = append(allFiles, bean.FileInfo{Name: strings.TrimSuffix(info.Name(), ".bin"), Size: info.Size(), ModTime: info.ModTime(), MimeType: mimeType, AppName: appName})
+		shareableLink := ""
+		tokenStr, err := impl.tokenService.ShareFileVerificationToken(&bean.ShareFileClaims{Email: email, AppName: appName, FileName: info.Name()})
+		if err == nil {
+			shareableLink = fmt.Sprintf("/download-shared-file/%s/%s?Authorization=%s", appName, strings.TrimSuffix(info.Name(), ".bin"), tokenStr)
+		} else {
+			impl.logger.Errorw("Error in generating shareable link", "Error", err)
+		}
+		allFiles = append(allFiles, bean.FileInfo{Name: strings.TrimSuffix(info.Name(), ".bin"), Size: info.Size(), ModTime: info.ModTime(), MimeType: mimeType, AppName: appName, ShareableLink: shareableLink})
 	}
 	return allFiles, nil
 }
