@@ -345,8 +345,8 @@ func (impl *TelegramImpl) downloadMedia(url, sender, fileNameWithExtension strin
 
 	allEmails, err := impl.GetUsersFromTelegramNumber(sender)
 	if err != nil {
-		impl.logger.Errorw("Error in getting user from whatsapp number", "Error", err)
-		return err
+		impl.logger.Errorw("Error in getting user from telegram number", "Error", err)
+		return fmt.Errorf("have you set your email here. Please send 'set email youremail@gmail.com' and then verify by clicking on the link received on your email")
 	}
 
 	for _, email := range allEmails {
