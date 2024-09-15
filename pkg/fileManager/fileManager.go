@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -146,9 +147,9 @@ func (impl *FileManagerImpl) DownloadDecryptedFile(w http.ResponseWriter, encryp
 	}
 
 	fileName := path.Base(encryptedFilePath)
-	w.Header().Set("Content-Disposition", "attachment; filename="+strings.TrimPrefix(fileName, ".bin"))
+	w.Header().Set("Content-Disposition", "attachment; filename="+strings.TrimSuffix(fileName, ".bin"))
 
-	mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimPrefix(fileName, ".bin"), ".")[len(strings.Split(fileName, "."))-2]))
+	mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimSuffix(fileName, ".bin"), ".")[len(strings.Split(fileName, "."))-2]))
 	if err != nil {
 		impl.logger.Errorw("Error in getting mime type", "Error", err)
 	} else {
@@ -181,7 +182,7 @@ func (impl *FileManagerImpl) ListAllFilesFromApp(email, appName string) ([]bean.
 			impl.logger.Errorw("Error in getting file info", "Error", err)
 			continue
 		}
-		mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimPrefix(file.Name(), ".bin"), ".")[len(strings.Split(file.Name(), "."))-2]))
+		mimeType, err := util.GetMimeTypeFromExtension(fmt.Sprintf(".%s", strings.Split(strings.TrimSuffix(file.Name(), ".bin"), ".")[len(strings.Split(file.Name(), "."))-2]))
 		if err != nil {
 			impl.logger.Errorw("Error in getting mime type", "Error", err)
 			continue
@@ -189,7 +190,7 @@ func (impl *FileManagerImpl) ListAllFilesFromApp(email, appName string) ([]bean.
 		shareableLink := ""
 		tokenStr, err := impl.tokenService.ShareFileVerificationToken(&bean.ShareFileClaims{Email: email, AppName: appName, FileName: info.Name()})
 		if err == nil {
-			shareableLink = fmt.Sprintf("/download-shared-file/%s/%s?Authorization=%s", appName, strings.TrimSuffix(info.Name(), ".bin"), tokenStr)
+			shareableLink = fmt.Sprintf("/download-shared-file/%s/%s?Authorization=%s", url.PathEscape(appName), url.PathEscape(strings.TrimSuffix(info.Name(), ".bin")), url.QueryEscape(tokenStr))
 		} else {
 			impl.logger.Errorw("Error in generating shareable link", "Error", err)
 		}
