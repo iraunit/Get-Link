@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/go-pg/pg"
+	"github.com/gorilla/context"
 	"github.com/iraunit/get-link-backend/pkg/services"
 	"github.com/iraunit/get-link-backend/util/bean"
 	"go.uber.org/zap"
@@ -16,6 +17,7 @@ import (
 type Whatsapp interface {
 	Verify(w http.ResponseWriter, r *http.Request)
 	HandleMessage(w http.ResponseWriter, r *http.Request)
+	SendWhatsappMessage(w http.ResponseWriter, r *http.Request)
 }
 
 type WhatsappImpl struct {
@@ -92,4 +94,32 @@ func (impl *WhatsappImpl) HandleMessage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (impl *WhatsappImpl) SendWhatsappMessage(w http.ResponseWriter, r *http.Request) {
+	userEmail := context.Get(r, "email").(string)
+	allEmails := impl.wService.GetIfUserIsPremium(userEmail)
+	if !allEmails {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 403, Error: "You are not a premium user. Please upgrade your plan. Contact me on twitter (iraunit) or email me on contact.shyptsolution@gmail.com."})
+		return
+	}
+
+	msg := &Message{}
+	err := json.NewDecoder(r.Body).Decode(&msg)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: "Error in decoding request body"})
+		return
+	}
+
+	err = impl.wService.SendMessageFromWeb(userEmail, msg.Message)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 400, Error: err.Error()})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(bean.Response{StatusCode: 200, Result: "Message sent successfully"})
 }

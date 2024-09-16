@@ -23,6 +23,8 @@ type WhatsappService interface {
 	ReceiveMessage(message *bean.WhatsAppBusinessMessageData) error
 	VerifyEmail(message string, sender string)
 	ParseMessageAndBroadcast(message string, sender string) error
+	GetIfUserIsPremium(userEmail string) bool
+	SendMessageFromWeb(userEmail string, message string) error
 }
 
 type WhatsappServiceImpl struct {
@@ -211,4 +213,20 @@ func (impl *WhatsappServiceImpl) GetUsersFromWhatsappNumber(sender string) ([]be
 		return nil, pg.ErrNoRows
 	}
 	return allEmails, nil
+}
+
+func (impl *WhatsappServiceImpl) GetIfUserIsPremium(email string) bool {
+	return impl.repository.IsUserPremiumUser(email)
+}
+
+func (impl *WhatsappServiceImpl) SendMessageFromWeb(userEmail string, message string) error {
+
+	number, err := impl.repository.GetWhatsappNumberFromEmail(userEmail)
+
+	if err != nil || number == "" {
+		impl.logger.Errorw("Error in getting number from email", "Error: ", err)
+		return fmt.Errorf("error in getting number from email. Have you set your number in profile")
+	}
+
+	return impl.SendMessage(number, message)
 }

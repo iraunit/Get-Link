@@ -9,7 +9,15 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
+
+type User struct {
+	Email             string    `sql:"email"`
+	Premium           bool      `sql:"premium"`
+	PremiumExpiration time.Time `sql:"premium_expiration"`
+	WhatsappNumber    string    `sql:"whatsapp_number"`
+}
 
 type Repository interface {
 	AddLink(getLink *bean.GetLink, decryptedData *bean.GetLink, receiverMail string)
@@ -21,6 +29,7 @@ type Repository interface {
 	IsUserPremiumUser(userEmail string) bool
 	InsertUpdateTelegramNumber(email, chatId, senderId string) error
 	GetEmailsFromEmail(sender string) ([]bean.TelegramEmail, error)
+	GetWhatsappNumberFromEmail(email string) (string, error)
 }
 
 type Impl struct {
@@ -128,6 +137,16 @@ func (impl *Impl) IsUserPremiumUser(userEmail string) bool {
 	impl.lock.Lock()
 	defer impl.lock.Unlock()
 
+	var user User
+	err := impl.db.Model(&user).Where("email = ?", userEmail).Select()
+	if err != nil || user.Email == "" {
+		impl.logger.Errorw("Error in getting user", "Error: ", err, "user", user)
+		return false
+	}
+
+	if user.Premium && user.PremiumExpiration.After(time.Now()) {
+		return true
+	}
 	return false
 }
 
@@ -164,4 +183,17 @@ func (impl *Impl) GetEmailsFromEmail(sender string) ([]bean.TelegramEmail, error
 		return nil, err
 	}
 	return result, nil
+}
+
+func (impl *Impl) GetWhatsappNumberFromEmail(email string) (string, error) {
+	impl.lock.Lock()
+	defer impl.lock.Unlock()
+
+	var user User
+	err := impl.db.Model(&user).Column("whatsapp_number").Where("email = ?", email).Select()
+	if err != nil {
+		impl.logger.Errorw("Error in getting whatsapp number from email", "Error: ", err)
+		return "", err
+	}
+	return user.WhatsappNumber, nil
 }

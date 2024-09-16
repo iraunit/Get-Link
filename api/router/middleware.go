@@ -15,6 +15,7 @@ import (
 type Middleware interface {
 	AuthMiddleware(next http.Handler) http.Handler
 	LoggerMiddleware(next http.Handler) http.Handler
+	HandlePanic(next http.Handler) http.Handler
 }
 
 type MiddlewareImpl struct {
@@ -99,6 +100,17 @@ func (impl *MiddlewareImpl) LoggerMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		impl.logger.Infow("req:", "Path:", r.URL.Path, "Method:", r.Method, "Email:", context.Get(r, "email"), "UUID:", context.Get(r, "uuid"))
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (impl *MiddlewareImpl) HandlePanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				impl.logger.Errorw("panic occurred", "error", err)
+			}
+		}()
 		next.ServeHTTP(w, r)
 	})
 }

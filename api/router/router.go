@@ -26,7 +26,7 @@ func NewMuxRouter(middleware Middleware, links restHandler.Links, whatsapp restH
 }
 
 func (r *MuxRouter) GetRouter() *mux.Router {
-
+	r.Router.Use(r.middleware.HandlePanic)
 	r.Router.Use(r.middleware.AuthMiddleware)
 	r.Router.Use(r.middleware.LoggerMiddleware)
 
@@ -44,5 +44,6 @@ func (r *MuxRouter) GetRouter() *mux.Router {
 	r.Router.HandleFunc("/delete-file/{appName}/{fileName}", r.fileHandler.DeleteFile).Methods("DELETE")
 	r.Router.HandleFunc("/verify-telegram-email", r.Telegram.VerifyTelegramEmail).Methods("GET")
 	r.Router.HandleFunc("/send-telegram-message", r.Telegram.SendTelegramMessage).Methods("POST")
+	r.Router.HandleFunc("/send-whatsapp-message", r.Whatsapp.SendWhatsappMessage).Methods("POST")
 	return r.Router
 }

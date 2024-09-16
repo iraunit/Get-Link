@@ -39,6 +39,13 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		"whatsapp_number" VARCHAR(512)
 	  );`)
 
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "users" (
+		"email" VARCHAR(512) PRIMARY KEY,
+		"premium" BOOLEAN DEFAULT FALSE,
+		"premium_expiration" TIMESTAMP,
+		"whatsapp_number" VARCHAR(20)
+	);`)
+
 	if err != nil {
 		logger.Fatal("Error creating schema for whatsapp_email", zap.Error(err))
 	}
