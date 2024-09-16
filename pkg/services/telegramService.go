@@ -140,7 +140,7 @@ func (impl *TelegramImpl) ReceiveTelegramMessage(ctx context.Context, b *bot.Bot
 			}
 			impl.linkService.AddLink(decryptedEmail, &bean.GetLink{Receiver: decryptedEmail, Sender: decryptedEmail, Message: update.Message.Text, UUID: "telegram"})
 		}
-		impl.SendTelegramMessage(update.Message.Chat.ID, update.Message.Text)
+		impl.SendTelegramMessage(update.Message.Chat.ID, "Message sent to Get Link.\nVisit codingkaro.in for more.\nHelp: https://twitter.com/iraunitverma")
 	} else {
 		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
 			flag := true
