@@ -44,7 +44,7 @@ func (app *App) Start() {
 		"https://shyptsolution.com",
 		"https://www.shyptsolution.com",
 	})
-	corsHeaders := handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding"})
+	corsHeaders := handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Access-Control-Allow-Origin"})
 	corsMethods := handlers.AllowedMethods([]string{"POST", "DELETE", "GET", "OPTIONS", "HEAD"})
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), handlers.CORS(corsOrigins, corsHeaders, corsMethods)(app.MuxRouter.Router)); err != nil {

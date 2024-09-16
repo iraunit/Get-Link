@@ -94,13 +94,7 @@ func (impl *FileHandlerImpl) UploadFile(w http.ResponseWriter, r *http.Request) 
 }
 
 func (impl *FileHandlerImpl) ListAllFiles(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Origin", "https://codingkaro.in")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, DELETE, GET, OPTIONS, HEAD")
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+	w.Header().Set("Access-Control-Allow-Origin", "https://codingkaro.in")
 
 	email := muxContext.Get(r, "email").(string)
 
