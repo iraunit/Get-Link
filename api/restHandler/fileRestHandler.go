@@ -22,20 +22,27 @@ type FileHandler interface {
 }
 
 type FileHandlerImpl struct {
-	logger      *zap.SugaredLogger
-	fileManager fileManager.FileManager
-	fileService services.FileService
+	logger        *zap.SugaredLogger
+	fileManager   fileManager.FileManager
+	fileService   services.FileService
+	downloadQueue chan struct{}
 }
 
 func NewFileHandlerImpl(logger *zap.SugaredLogger, fileManager fileManager.FileManager, fileService services.FileService) *FileHandlerImpl {
 	return &FileHandlerImpl{
-		logger:      logger,
-		fileManager: fileManager,
-		fileService: fileService,
+		logger:        logger,
+		fileManager:   fileManager,
+		fileService:   fileService,
+		downloadQueue: make(chan struct{}, 1),
 	}
 }
 
 func (impl *FileHandlerImpl) DownloadFile(w http.ResponseWriter, r *http.Request) {
+	impl.downloadQueue <- struct{}{}
+	defer func() {
+		<-impl.downloadQueue
+	}()
+
 	email := muxContext.Get(r, "email").(string)
 	vars := mux.Vars(r)
 	fileName := vars["fileName"] + ".bin"
