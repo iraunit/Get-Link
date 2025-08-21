@@ -20,6 +20,7 @@ func NewPgDb(logger *zap.SugaredLogger) *pg.DB {
 		User:     cfg.User,
 		Password: cfg.Password,
 		Database: cfg.Database,
+		TLSConfig: nil,
 	})
 
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "get_links" (
